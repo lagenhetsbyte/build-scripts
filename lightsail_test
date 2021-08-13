@@ -23,6 +23,8 @@ do
 
 done
 
+echo $REGION
+
 # These files will be generated
 CONFIG_CONTAINER=lightsail-container.json
 CONFIG_ENDPOINT=lightsail-endpoint.json
