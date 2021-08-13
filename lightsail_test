@@ -10,13 +10,14 @@ sudo apt install jq -y
 #CONTAINER
 #PORT
 
+echo "Variables:"
+
 for ARGUMENT in "$@"
 do
 
     KEY=$(echo $ARGUMENT | cut -f1 -d=)
     VALUE=$(echo $ARGUMENT | cut -f2 -d=)
-        declare $KEY=$VALUE
-        echo "Variables:"
+        declare $KEY=$VALUE        
         echo $KEY=$VALUE
 
 done
