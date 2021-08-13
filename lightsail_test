@@ -6,7 +6,6 @@ set -e
 #SERVICE
 #CONTAINER
 #PORT
-#DEPENDENCY_DIRECTORY
 
 for ARGUMENT in "$@"
 do
@@ -14,6 +13,7 @@ do
     KEY=$(echo $ARGUMENT | cut -f1 -d=)
     VALUE=$(echo $ARGUMENT | cut -f2 -d=)
         declare $KEY=$VALUE
+        echo "Variables:"
         echo $KEY=$VALUE
 
 done
@@ -21,10 +21,6 @@ done
 # These files will be generated
 CONFIG_CONTAINER=lightsail-container.json
 CONFIG_ENDPOINT=lightsail-endpoint.json
-
-# Add dependency
-#echo "Copying dependency $DEPENDENCY_DIRECTORY" 
-#cp -r $DEPENDENCY_DIRECTORY ./
 
 # Build image
 echo "Building Docker image" 
