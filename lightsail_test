@@ -48,4 +48,4 @@ echo "{\""$CONTAINER"\":{\"image\":\"$IMAGE""\",\"ports\":{\""$PORT"\":\"HTTP\"}
 echo "{\"containerName\":\""$CONTAINER"\",\"containerPort\":"$PORT"}" > $CONFIG_ENDPOINT
 
 # Deploy container with new image
-aws lightsail create-container-service-deployment --service-name $SERVICE --containers file://$CONFIG_CONTAINER --public-endpoint file://$CONFIG_ENDPOINT
+aws lightsail create-container-service-deployment --service-name $SERVICE --containers file://$CONFIG_CONTAINER --public-endpoint file://$CONFIG_ENDPOINT | echo "Done!"
