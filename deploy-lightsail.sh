@@ -58,7 +58,7 @@ done
 aws lightsail create-container-service-deployment --service-name $SERVICE --containers file://$CONFIG_CONTAINER --public-endpoint file://$CONFIG_ENDPOINT | echo "Done!"
 
 # Wait for lightsail to leave deployment stage to be sure that when this script ends, the application is deployed
-sleep 5
+sleep 10
 STATE=$(aws lightsail get-container-service-deployments --service-name $SERVICE | jq [.deployments[0]][0].state)
 
 while [ "$STATE" == "\"ACTIVATING\"" ]; do
