@@ -47,6 +47,13 @@ echo "{\""$CONTAINER"\":{\"image\":\"$IMAGE""\",\"ports\":{\""$PORT"\":\"HTTP\"}
 # Write endpoint config to json file
 echo "{\"containerName\":\""$CONTAINER"\",\"containerPort\":"$PORT"}" > $CONFIG_ENDPOINT
 
+# Wait for service to be in READY mode before deploying
+while [ "$STATE" != "\"ACTIVE\"" ]; do
+STATE=$(aws lightsail get-container-service-deployments --service-name $SERVICE | jq [.deployments[0]][0].state)
+echo "Current service state: "$STATE""
+sleep 5
+done
+
 # Deploy container with new image
 aws lightsail create-container-service-deployment --service-name $SERVICE --containers file://$CONFIG_CONTAINER --public-endpoint file://$CONFIG_ENDPOINT | echo "Done!"
 
