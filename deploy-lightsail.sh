@@ -48,7 +48,7 @@ echo "{\""$CONTAINER"\":{\"image\":\"$IMAGE""\",\"ports\":{\""$PORT"\":\"HTTP\"}
 echo "{\"containerName\":\""$CONTAINER"\",\"containerPort\":"$PORT"}" > $CONFIG_ENDPOINT
 
 # Wait for service to be in READY mode before deploying
-while [ "$STATE" != "\"ACTIVE\"" ]; do
+while [ "$STATE" != "\"ACTIVE\"" ] && [ "$STATE" != "\"FAILED\"" ]; do
 STATE=$(aws lightsail get-container-service-deployments --service-name $SERVICE | jq [.deployments[0]][0].state)
 echo "Current service state: "$STATE""
 sleep 5
@@ -64,6 +64,8 @@ STATE=$(aws lightsail get-container-service-deployments --service-name $SERVICE 
 echo "Current service state: "$STATE""
 sleep 5
 done
+
+# Check if failed here
 
 echo "All done."
 
