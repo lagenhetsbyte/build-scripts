@@ -10,6 +10,7 @@ set -e
 #SSH_KEY_DIR
 #AWS_ACCESS_KEY_ID
 #AWS_SECRET_ACCESS_KEY
+#DOCKER_RUN_COMMAND
 
 echo "Variables:"
 
@@ -56,7 +57,7 @@ COMMAND_4="aws ecr get-login-password --region "$AWS_REGION" | sudo docker login
 COMMAND_5="sudo docker pull "$REPOSITORY_URI":latest"
 COMMAND_6="sudo docker stop "$CONTAINER""
 COMMAND_7="sudo docker rm "$CONTAINER" -f"
-COMMAND_8="sudo docker run -d --name "$CONTAINER" -p 80:80 -p 443:443 "$REPOSITORY_URI":latest"
+COMMAND_8=""$DOCKER_RUN_COMMAND""
 COMMAND_9="sudo docker image prune -a -f"
 
 echo Connecting and running commands on remote server
