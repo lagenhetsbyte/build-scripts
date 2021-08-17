@@ -7,7 +7,7 @@ set -e
 #AWS_REPONAME
 #VPS_HOST
 #VPS_USER
-#SSH_KEY
+#SSH_KEY_NAME
 #AWS_ACCESS_KEY_ID
 #AWS_SECRET_ACCESS_KEY
 
@@ -48,9 +48,7 @@ echo Pushing the Docker images
 docker push $REPOSITORY_URI:latest
 docker push $REPOSITORY_URI:$IMAGE_TAG
 
-ssh-add - <<< "$SSH_KEY"
-ssh -o StrictHostKeyChecking=no $VPS_USER@$VPS_HOST "aws configure set default.region "$AWS_REGION"; aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID"; aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY; docker pull "$REPOSITORY_URI":latest; docker run -p 80:80 -p 443:443; docker image prune -a -f"
-"
+ssh -o StrictHostKeyChecking=no -i "$SSH_KEY_NAME" $VPS_USER@$VPS_HOST "aws configure set default.region "$AWS_REGION"; aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID"; aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY; docker pull "$REPOSITORY_URI":latest; docker run -p 80:80 -p 443:443; docker image prune -a -f"
 
 echo All done.
 
