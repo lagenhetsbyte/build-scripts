@@ -49,18 +49,18 @@ echo Pushing the Docker images
 docker push $REPOSITORY_URI:latest
 docker push $REPOSITORY_URI:$IMAGE_TAG
 
-COMMAND_1=aws configure set default.region "$AWS_REGION"
-COMMAND_2=aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID"
-COMMAND_3=aws configure set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY"
-COMMAND_4=aws ecr get-login-password --region "$AWS_REGION" | sudo docker login --username AWS --password-stdin "$AWS_DOMAIN"
-COMMAND_5=sudo docker pull "$REPOSITORY_URI":latest
-COMMAND_6=sudo docker stop "$CONTAINER"
-COMMAND_7=sudo docker rm "$CONTAINER" -f
-COMMAND_8=sudo docker run --name "$CONTAINER" -p 80:80 -p 443:443 "$REPOSITORY_URI":latest
-COMMAND_9=sudo docker image prune -a -f
+COMMAND_1="aws configure set default.region "$AWS_REGION""
+COMMAND_2="aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID""
+COMMAND_3="aws configure set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY""
+COMMAND_4="aws ecr get-login-password --region "$AWS_REGION" | sudo docker login --username AWS --password-stdin "$AWS_DOMAIN""
+COMMAND_5="sudo docker pull "$REPOSITORY_URI":latest"
+COMMAND_6="sudo docker stop "$CONTAINER""
+COMMAND_7="sudo docker rm "$CONTAINER" -f"
+COMMAND_8="sudo docker run --name "$CONTAINER" -p 80:80 -p 443:443 "$REPOSITORY_URI":latest"
+COMMAND_9="sudo docker image prune -a -f"
 
 echo Connecting and running commands on remote server
-ssh -o StrictHostKeyChecking=no -i "$SSH_KEY_DIR" $VPS_USER@$VPS_HOST '"$COMMAND_1"; "$COMMAND_2"; "$COMMAND_3"; "$COMMAND_4"; "$COMMAND_5"; "$COMMAND_6"; "$COMMAND_7"; "$COMMAND_8"; "$COMMAND_9"'
+ssh -o StrictHostKeyChecking=no -i "$SSH_KEY_DIR" "$VPS_USER"@"$VPS_HOST" ""$COMMAND_1"; "$COMMAND_2"; "$COMMAND_3"; "$COMMAND_4"; "$COMMAND_5"; "$COMMAND_6"; "$COMMAND_7"; "$COMMAND_8"; "$COMMAND_9""
 
 echo All done.
 
