@@ -23,10 +23,6 @@ do
 
 done
 
-echo "$SSH_KEY_DIR"
-cat "$SSH_KEY_DIR"
-
-
 echo Logging in to Amazon ECR...
 
 # login to AWS ECR
@@ -53,6 +49,7 @@ echo Pushing the Docker images
 docker push $REPOSITORY_URI:latest
 docker push $REPOSITORY_URI:$IMAGE_TAG
 
+echo Connecting and running commands on remote server
 ssh -o StrictHostKeyChecking=no -i "$SSH_KEY_DIR" $VPS_USER@$VPS_HOST "aws configure set default.region "$AWS_REGION"; aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID"; aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY; docker pull "$REPOSITORY_URI":latest; sudo docker stop $CONTAINER; sudo docker rm $CONTAINER -f; docker run --name $CONTAINER -p 80:80 -p 443:443 "$REPOSITORY_URI":latest; docker image prune -a -f"
 
 echo All done.
