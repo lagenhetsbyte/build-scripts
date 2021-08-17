@@ -53,16 +53,6 @@ echo Pushing the Docker images
 docker push $REPOSITORY_URI:latest
 docker push $REPOSITORY_URI:$IMAGE_TAG
 
-echo "Stopping $CONTAINER..."
-
-
-echo "Removing $CONTAINER..."
-sudo docker rm $CONTAINER -f
-
-echo "Initiating $CONTAINER..."
-sudo docker run --name $CONTAINER --network deployify --user $USER_GROUP --restart=always -d -v $DATA/config:/config -v $DATA/repos:/nugetserver/repos -v $DATA/vault:/vault $IMAGE
-
-
 ssh -o StrictHostKeyChecking=no -i "$SSH_KEY_DIR" $VPS_USER@$VPS_HOST "aws configure set default.region "$AWS_REGION"; aws configure set aws_access_key_id "$AWS_ACCESS_KEY_ID"; aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY; docker pull "$REPOSITORY_URI":latest; sudo docker stop $CONTAINER; sudo docker rm $CONTAINER -f; docker run --name $CONTAINER -p 80:80 -p 443:443 "$REPOSITORY_URI":latest; docker image prune -a -f"
 
 echo All done.
