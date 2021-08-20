@@ -63,6 +63,12 @@ COMMAND_9="sudo docker image prune -a -f"
 echo Connecting and running commands on remote server
 ssh -o StrictHostKeyChecking=no -i "$SSH_KEY_DIR" "$VPS_USER"@"$VPS_HOST" ""$COMMAND_1"; "$COMMAND_2"; "$COMMAND_3"; "$COMMAND_4"; "$COMMAND_5"; "$COMMAND_7"; "$COMMAND_10"; "$COMMAND_8"; "$COMMAND_9""
 
-echo All done.
+# Wait and check container status
 
+sleep 10
 
+if [ "$(sudo docker container inspect -f '{{.State.Running}}' $CONTAINER)" == "true" ]; then 
+  exit 0
+else 
+  exit 1
+fi
