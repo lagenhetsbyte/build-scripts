@@ -1,5 +1,4 @@
  #!/bin/bash
-set -e
 
 check_apt_lock() {
     locked1=$(sudo lsof /var/lib/dpkg/lock-frontend)
