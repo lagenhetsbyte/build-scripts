@@ -55,7 +55,7 @@ check_aws() {
     echo "Looking for AWS CLI installation"
     aws --version | grep "aws-cli/"
     if [ $? -eq 0 ]; then
-        echo "aws-cli is installed."
+        echo "AWS CLI is installed"
     else
         echo "Installing AWS CLI"
         install_aws
