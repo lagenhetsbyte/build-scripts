@@ -16,10 +16,14 @@ do
 
 done
 
+echo "Waiting $SLEEP secs for container to warm up"
+
 sleep $SLEEP
 
 if [ "$(sudo docker container inspect -f '{{.State.Running}}' "$CONTAINER")" == "true" ]; then 
+  echo "Container is still up and OK"
   exit 0
 else 
+  echo "Container is not running"
   exit 1
 fi
