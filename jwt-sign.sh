@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-#KEY
+#SECRET
 #PAYLOAD
 
 echo "Variables:"
@@ -21,7 +21,7 @@ jwt_header=$(echo -n '{"alg":"HS256","typ":"JWT"}' | base64 | sed s/\+/-/g | sed
 
 payload=$(echo -n "$PAYLOAD" | base64 | sed s/\+/-/g |sed 's/\//_/g' |  sed -E s/=+$//)
 
-secret="$KEY"
+secret="$SECRET"
 
 hexsecret=$(echo -n "$secret" | xxd -p | paste -sd "")
 
