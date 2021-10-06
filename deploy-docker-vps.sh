@@ -57,7 +57,7 @@ COMMAND_4="aws ecr get-login-password --region "$AWS_REGION" | sudo docker login
 COMMAND_5="sudo docker pull "$REPOSITORY_URI":latest"
 COMMAND_7="sudo docker rm "$CONTAINER" -f || true"
 COMMAND_10="sudo docker volume create data"
-COMMAND_8="sudo docker run -d --name "$CONTAINER" "$DOCKER_RUN_COMMAND" "$REPOSITORY_URI":latest"
+COMMAND_8="sudo docker run --restart=always -d --name "$CONTAINER" "$DOCKER_RUN_COMMAND" "$REPOSITORY_URI":latest"
 COMMAND_9="sudo docker image prune -a -f"
 COMMAND_11="curl -L https://raw.githubusercontent.com/lagenhetsbyte/build-scripts/master/container-health.sh | bash -s SLEEP="10" CONTAINER=""$CONTAINER"""
 
