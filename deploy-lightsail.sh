@@ -54,6 +54,9 @@ echo "Current service state: "$STATE""
 sleep 5
 done
 
+# Get current image in use
+IMAGE_BEFORE_DEPLOY=$(aws lightsail get-container-service-deployments --service-name $SERVICE | jq "[.deployments[0]][0].containers" | grep -oP '(?<="image": ")[^"]*')
+
 # Deploy container with new image
 aws lightsail create-container-service-deployment --service-name $SERVICE --containers file://$CONFIG_CONTAINER --public-endpoint file://$CONFIG_ENDPOINT | echo "Done!"
 
@@ -67,7 +70,26 @@ echo "Current service state: "$STATE""
 sleep 5
 done
 
-# Check if failed here
+# Get current in use after deployment
+IMAGE_AFTER_DEPLOY=$(aws lightsail get-container-service-deployments --service-name $SERVICE | jq "[.deployments[0]][0].containers" | grep -oP '(?<="image": ")[^"]*')
+
+# Deployment failed if the new image is same as old
+if [ "$IMAGE_BEFORE_DEPLOY" == "$IMAGE_AFTER_DEPLOY" ]; then
+    echo "Deployment failed."
+    exit 1
+else
+    echo "Deployment was successful."
+fi
+
+# Cleanup after successful deployment
+echo "Cleaning up old images (keeping 10 newest)"
+IMAGES=$(aws lightsail get-container-images --service-name $SERVICE --no-paginate --query "reverse(containerImages[*].image)[:-10]")
+echo "$IMAGES" | jq '.[]' | while read -r IMAGE;do
+DECODED_IMAGE=$(echo $IMAGE | sed -r 's/%22+//g' | sed -r 's/%3A//g' | sed -r 's/"//g' | sed -r 's/://g')
+echo "deleting image: $DECODED_IMAGE"
+aws lightsail delete-container-image --service-name $SERVICE --image ":$DECODED_IMAGE"
+done
+echo "Cleaning old images is done."
 
 echo "All done."
 
