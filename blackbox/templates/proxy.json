@@ -1,0 +1,65 @@
+{
+  "kind": "DaemonSet",
+  "apiVersion": "apps/v1",
+  "metadata": {
+    "name": "proxy-auto-ssl"
+  },
+  "spec": {
+    "selector": {
+      "matchLabels": {
+        "component": "ingress-controller"
+      }
+    },
+    "template": {
+      "metadata": {
+        "labels": {
+          "component": "ingress-controller"
+        }
+      },
+      "spec": {
+        "restartPolicy": "Always",
+        "hostNetwork": true,
+        "volumes": [
+          {
+            "name": "proxy-volume",
+            "persistentVolumeClaim": {
+              "claimName": "proxy-volume-claim"
+            }
+          }
+        ],
+        "containers": [
+          {
+            "name": "nginx-ingress-lb",
+            "image": "valian/docker-nginx-auto-ssl",
+            "ports": [
+              {
+                "name": "http",
+                "hostPort": 80,
+                "containerPort": 80,
+                "protocol": "TCP"
+              },
+              {
+                "name": "https",
+                "hostPort": 443,
+                "containerPort": 443,
+                "protocol": "TCP"
+              }
+            ],
+            "volumeMounts": [
+              {
+                "mountPath": "/etc/resty-auto-ssl",
+                "name": "proxy-volume"
+              }
+            ],
+            "env": [
+              {
+                "name": "RESOLVER_ADDRESS",
+                "value": "9.9.9.9 ipv6=off"
+              }
+            ]
+          }
+        ]
+      }
+    }
+  }
+}
