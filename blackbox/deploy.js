@@ -109,16 +109,14 @@ function runHostScript(command, failOnError = true, skipLog) {
 }
 
 function generateTemplates() {
+  const serviceVolumes = instruction.services
+    .filter((x) => x.volumes)
+    .map((x) => x.volumes.map((s) => ({ ...s, name: `${x.name}-${s.name}` })))
+    .flat();
+
   generateStorageTemplate([
+    ...serviceVolumes,
     { name: "proxy-volume", containerPath: "/etc/resty-auto-ssl", size: 1 },
-    instruction.services
-      .map(
-        (x) =>
-          x.volumes &&
-          x.volumes.map((s) => ({ ...s, name: `${x.name}-${s.name}` }))
-      )
-      .filter((x) => x)
-      .flat(),
   ]);
 
   generateServiceTemplate(instruction.services);
@@ -126,8 +124,6 @@ function generateTemplates() {
     instruction.services,
     instruction.sslProductionMode,
     instruction.removeServices
-      ? instruction.removeServices.map((x) => x.domain)
-      : null
   );
 }
 
@@ -271,7 +267,11 @@ async function generateServiceTemplate(services) {
   fs.writeFileSync("generated-service.json", JSON.stringify(template));
 }
 
-async function generateProxyTemplate(services, production, removeDomains = []) {
+async function generateProxyTemplate(
+  services,
+  production,
+  removeServices = []
+) {
   const template = JSON.parse(fs.readFileSync("./templates/proxy.json"));
   const container = template.spec.template.spec.containers[0];
   let sites = "";
@@ -284,7 +284,7 @@ async function generateProxyTemplate(services, production, removeDomains = []) {
     const filtered = arr.filter(
       (x) =>
         !services.some((s) => x.trim().includes(`${s.domain}=`)) &&
-        !removeDomains.some((d) => x.trim().includes(`${d}=`))
+        !removeServices.some((rs) => x.trim().includes(`${rs.domain}=`))
     );
 
     sites = filtered.join(";");
@@ -309,8 +309,8 @@ async function generateProxyTemplate(services, production, removeDomains = []) {
   const currentProdMode = getCurrentProxyProductionMode();
 
   if (currentProdMode !== prodMode) {
-    fs.rmSync("/mnt/proxy-volume", { recursive: true, force: true });
-    fs.mkdirSync("/mnt/proxy-volume", { recursive: true });
+    await runHostScript("sudo rm -r  /mnt/proxy-volume/", false);
+    await runHostScript("sudo mkdir -p /mnt/proxy-volume/", false);
   }
 
   template.spec.template.spec.containers = [container];
@@ -335,10 +335,10 @@ async function getCurrentProxySitesConfig() {
   }
 
   const config = JSON.parse(configStr);
-  const sites = config.spec.template.spec.containers[0].env.find(
+  const env = config.spec.template.spec.containers[0].env.find(
     (x) => x.name === "SITES"
   );
-  return sites.value;
+  return env.value;
 }
 
 async function getCurrentProxyProductionMode() {
@@ -354,11 +354,11 @@ async function getCurrentProxyProductionMode() {
   }
 
   const config = JSON.parse(configStr);
-  const sites = config.spec.template.spec.containers[0].env.find(
+  const env = config.spec.template.spec.containers[0].env.find(
     (x) => x.name === "LETSENCRYPT_URL"
   );
 
-  return sites.value === "https://acme-v02.api.letsencrypt.org/directory";
+  return env.value === "https://acme-v02.api.letsencrypt.org/directory";
 }
 
 async function removeServices() {
@@ -379,6 +379,15 @@ async function removeServices() {
   }
 }
 
-generateTemplates();
-deploy();
-removeServices();
+async function run() {
+  try {
+    generateTemplates();
+    await deploy();
+    await removeServices();
+  } catch (error) {
+    console.error(error.message);
+    process.exit(1);
+  }
+}
+
+run();
