@@ -276,7 +276,8 @@ async function generateProxyTemplate(
   const container = template.spec.template.spec.containers[0];
   let sites = "";
 
-  const prodMode = production === null || production === true;
+  const prodMode =
+    production === null || production === undefined || production === true;
 
   const currentSites = await getCurrentProxySitesConfig();
   if (currentSites) {
@@ -306,8 +307,7 @@ async function generateProxyTemplate(
       : "https://acme-staging-v02.api.letsencrypt.org/directory",
   });
 
-  const currentProdMode = getCurrentProxyProductionMode();
-
+  const currentProdMode = await getCurrentProxyProductionMode();
   if (currentProdMode !== prodMode) {
     await runHostScript("sudo rm -r  /mnt/proxy-volume/", false);
     await runHostScript("sudo mkdir -p /mnt/proxy-volume/", false);
