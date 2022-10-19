@@ -2,6 +2,7 @@
 set -e
 
 # Variables to define
+#IMAGE_TAG
 #AWS_REGION
 #AWS_DOMAIN
 #AWS_REPONAME
@@ -33,7 +34,6 @@ aws configure set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY"
 aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_DOMAIN
 
 REPOSITORY_URI=$AWS_DOMAIN/$AWS_REPONAME
-IMAGE_TAG=${GIT_COMMIT}
 
 echo Build started on $(date)
 echo Building the Docker image...
