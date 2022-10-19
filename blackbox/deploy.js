@@ -125,7 +125,9 @@ function generateTemplates() {
   generateProxyTemplate(
     instruction.services,
     instruction.sslProductionMode,
-    instruction.removeDomains
+    instruction.removeServices
+      ? instruction.removeServices.map((x) => x.domain)
+      : null
   );
 }
 
@@ -274,6 +276,8 @@ async function generateProxyTemplate(services, production, removeDomains = []) {
   const container = template.spec.template.spec.containers[0];
   let sites = "";
 
+  const prodMode = production === null || production === true;
+
   const currentSites = await getCurrentProxySitesConfig();
   if (currentSites) {
     const arr = currentSites.split(";");
@@ -297,11 +301,17 @@ async function generateProxyTemplate(services, production, removeDomains = []) {
 
   container.env.push({
     name: "LETSENCRYPT_URL",
-    value:
-      production === null || production === true
-        ? "https://acme-v02.api.letsencrypt.org/directory"
-        : "https://acme-staging-v02.api.letsencrypt.org/directory",
+    value: prodMode
+      ? "https://acme-v02.api.letsencrypt.org/directory"
+      : "https://acme-staging-v02.api.letsencrypt.org/directory",
   });
+
+  const currentProdMode = getCurrentProxyProductionMode();
+
+  if (currentProdMode !== prodMode) {
+    fs.rmSync("/mnt/proxy-volume", { recursive: true, force: true });
+    fs.mkdirSync("/mnt/proxy-volume", { recursive: true });
+  }
 
   template.spec.template.spec.containers = [container];
 
@@ -331,5 +341,44 @@ async function getCurrentProxySitesConfig() {
   return sites.value;
 }
 
+async function getCurrentProxyProductionMode() {
+  const currentConfig = await runHostScript(
+    "microk8s kubectl get ds/proxy-auto-ssl -o json",
+    false,
+    true
+  );
+
+  const configStr = currentConfig.lines[0];
+  if (!configStr) {
+    return null;
+  }
+
+  const config = JSON.parse(configStr);
+  const sites = config.spec.template.spec.containers[0].env.find(
+    (x) => x.name === "LETSENCRYPT_URL"
+  );
+
+  return sites.value === "https://acme-v02.api.letsencrypt.org/directory";
+}
+
+async function removeServices() {
+  if (!Array.isArray(instruction.removeServices)) {
+    return;
+  }
+
+  for (const service of instruction.removeServices) {
+    await runHostScript(
+      `microk8s kubectl delete -n default service ${service.name}`,
+      false
+    );
+
+    await runHostScript(
+      `microk8s kubectl delete -n default deployment ${service.name}`,
+      false
+    );
+  }
+}
+
 generateTemplates();
 deploy();
+removeServices();
