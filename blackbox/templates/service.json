@@ -51,14 +51,6 @@
             }
           },
           "spec": {
-            "volumes": [
-              {
-                "name": "",
-                "persistentVolumeClaim": {
-                  "claimName": ""
-                }
-              }
-            ],
             "containers": [
               {
                 "name": "",
