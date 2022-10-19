@@ -217,9 +217,8 @@ async function generateServiceTemplate(services) {
     cTDeployment.spec.selector.matchLabels.app = service.name;
     cTDeployment.spec.template.metadata.labels.app = service.name;
 
-    cTDeployment.spec.template.spec.volumes = [];
-
     if (service.volumes) {
+      cTDeployment.spec.template.spec.volumes = [];
       for (const storage of service.volumes) {
         cTDeployment.spec.template.spec.volumes.push({
           name: `${service.name}-${storage.name}`,
@@ -237,9 +236,8 @@ async function generateServiceTemplate(services) {
     container.ports = [{ containerPort: service.appPort }];
     container.readinessProbe.httpGet.port = service.appPort;
 
-    container.volumeMounts = [];
-
     if (service.volumes) {
+      container.volumeMounts = [];
       for (const storage of service.volumes) {
         container.volumeMounts.push({
           mountPath: storage.containerPath,
