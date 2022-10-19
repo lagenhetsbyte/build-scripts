@@ -33,7 +33,7 @@ aws configure set aws_secret_access_key "$AWS_SECRET_ACCESS_KEY"
 aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_DOMAIN
 
 REPOSITORY_URI=$AWS_DOMAIN/$AWS_REPONAME
-IMAGE_TAG=${COMMIT_HASH:=latest}
+IMAGE_TAG=${GIT_COMMIT}
 
 echo Build started on $(date)
 echo Building the Docker image...
@@ -49,7 +49,8 @@ docker push $REPOSITORY_URI:$IMAGE_TAG
 scp -o StrictHostKeyChecking=no -i "$SSH_KEY_DIR" $INSTRUCTION_FILE "$VPS_USER"@"$VPS_HOST":instruction.json
 
 COMMAND_1="wget https://github.com/lagenhetsbyte/build-scripts/raw/master/blackbox/blackbox.zip && unzip -o blackbox.zip"
-COMMAND_2="sudo node deploy.js"
+COMMAND_2="node replace_image.js "$REPOSITORY_URI:$IMAGE_TAG""
+COMMAND_3="sudo node deploy.js"
 
 echo Connecting and running commands on remote server
 ssh -o StrictHostKeyChecking=no -i "$SSH_KEY_DIR" "$VPS_USER"@"$VPS_HOST" ""$COMMAND_1"; "$COMMAND_2";"
