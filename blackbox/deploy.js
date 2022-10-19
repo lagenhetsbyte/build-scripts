@@ -60,8 +60,11 @@ async function deploy() {
   process.exit(0);
 }
 
-function runHostScript(command, failOnError = true) {
-  console.log("Running command:", command);
+function runHostScript(command, failOnError = true, skipLog) {
+  if (!skipLog) {
+    console.log("Running command:", command);
+  }
+
   return new Promise((resolve, reject) => {
     const commandExec = exec(command);
     let lines = [];
@@ -92,7 +95,10 @@ function runHostScript(command, failOnError = true) {
         reject(toReturn);
       }
 
-      lines.map((x) => console.log(x));
+      if (!skipLog) {
+        lines.map((x) => console.log(x));
+      }
+
       resolve(toReturn);
     });
   });
@@ -112,7 +118,11 @@ function generateTemplates() {
   ]);
 
   generateServiceTemplate(instruction.services);
-  generateProxyTemplate(instruction.services, instruction.sslProductionMode);
+  generateProxyTemplate(
+    instruction.services,
+    instruction.sslProductionMode,
+    instruction.removeDomains
+  );
 }
 
 function getDnsRecords(domain) {
@@ -257,11 +267,23 @@ async function generateServiceTemplate(services) {
   fs.writeFileSync("generated-service.json", JSON.stringify(template));
 }
 
-async function generateProxyTemplate(services, production) {
+async function generateProxyTemplate(services, production, removeDomains = []) {
   const template = JSON.parse(fs.readFileSync("./templates/proxy.json"));
   const container = template.spec.template.spec.containers[0];
-
   let sites = "";
+
+  const currentSites = await getCurrentProxySitesConfig();
+  if (currentSites) {
+    const arr = currentSites.split(";");
+    const filtered = arr.filter(
+      (x) =>
+        !services.some((s) => x.trim().includes(`${s.domain}=`)) &&
+        !removeDomains.some((d) => x.trim().includes(`${d}=`))
+    );
+
+    sites = filtered.join(";");
+  }
+
   for (const service of services) {
     sites += `${service.domain}=localhost:${service.servicePort};`;
   }
@@ -285,6 +307,25 @@ async function generateProxyTemplate(services, production) {
 
 function copy(item) {
   return JSON.parse(JSON.stringify(item));
+}
+
+async function getCurrentProxySitesConfig() {
+  const currentConfig = await runHostScript(
+    "microk8s kubectl get ds/proxy-auto-ssl -o json",
+    false,
+    true
+  );
+
+  const configStr = currentConfig.lines[0];
+  if (!configStr) {
+    return null;
+  }
+
+  const config = JSON.parse(configStr);
+  const sites = config.spec.template.spec.containers[0].env.find(
+    (x) => x.name === "SITES"
+  );
+  return sites.value;
 }
 
 generateTemplates();
