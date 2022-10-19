@@ -6,58 +6,62 @@ const instruction = JSON.parse(fs.readFileSync("instruction.json"));
 const timeout = instruction.deploymentTimeout || 60;
 
 async function deploy() {
-  if (!instruction.forceDeployment) {
-    const podStatus = await runHostScript(
-      "microk8s kubectl rollout status deployment"
-    );
+  try {
+    if (!instruction.forceDeployment) {
+      const podStatus = await runHostScript(
+        "microk8s kubectl rollout status deployment"
+      );
 
-    if (podStatus.code !== 0) {
-      console.log("Not ready for rollout!");
-      process.exit(1);
+      if (podStatus.code !== 0) {
+        console.log("Not ready for rollout!");
+        process.exit(1);
+      }
     }
-  }
 
-  if (instruction.dockerLoginCommand) {
-    await runHostScript(instruction.dockerLoginCommand);
+    if (instruction.dockerLoginCommand) {
+      await runHostScript(instruction.dockerLoginCommand);
+      await runHostScript(
+        "sudo cp /root/.docker/config.json /var/snap/microk8s/common/var/lib/kubelet/"
+      );
+    }
+
     await runHostScript(
-      "sudo cp /root/.docker/config.json /var/snap/microk8s/common/var/lib/kubelet/"
-    );
-  }
-
-  await runHostScript(
-    "microk8s kubectl apply -f generated-storage.json",
-    false
-  );
-  await runHostScript("microk8s kubectl apply -f generated-service.json");
-
-  for (const service of instruction.services) {
-    await waitForCorrectDnsIp(service.domain, instruction.serverExternalIp);
-  }
-
-  await runHostScript("microk8s kubectl apply -f generated-proxy.json");
-
-  for (const service of instruction.services) {
-    // Let the rollout deploy in 60 sec, or timeout and start rollback
-    const deployResult = await runHostScript(
-      `microk8s kubectl rollout status deployment ${service.name} --watch --timeout ${timeout}s`,
+      "microk8s kubectl apply -f generated-storage.json",
       false
     );
+    await runHostScript("microk8s kubectl apply -f generated-service.json");
 
-    // Rollback
-    if (deployResult.code !== 0) {
-      await runHostScript(
-        `microk8s kubectl rollout undo deployment ${service.name}`
-      );
-
-      await runHostScript(
-        `microk8s kubectl rollout status deployment ${service.name} --watch --timeout ${timeout}s`
-      );
-
-      process.exit(1);
+    for (const service of instruction.services) {
+      await waitForCorrectDnsIp(service.domain, instruction.serverExternalIp);
     }
-  }
 
-  process.exit(0);
+    await runHostScript("microk8s kubectl apply -f generated-proxy.json");
+
+    for (const service of instruction.services) {
+      // Let the rollout deploy in 60 sec, or timeout and start rollback
+      const deployResult = await runHostScript(
+        `microk8s kubectl rollout status deployment ${service.name} --watch --timeout ${timeout}s`,
+        false
+      );
+
+      // Rollback
+      if (deployResult.code !== 0) {
+        await runHostScript(
+          `microk8s kubectl rollout undo deployment ${service.name}`
+        );
+
+        await runHostScript(
+          `microk8s kubectl rollout status deployment ${service.name} --watch --timeout ${timeout}s`
+        );
+
+        process.exit(1);
+      }
+    }
+
+    process.exit(0);
+  } catch (error) {
+    process.exit(1);
+  }
 }
 
 function runHostScript(command, failOnError = true, skipLog) {
