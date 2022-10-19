@@ -295,9 +295,10 @@ async function generateProxyTemplate(services, production, removeDomains = []) {
 
   container.env.push({
     name: "LETSENCRYPT_URL",
-    value: production
-      ? "https://acme-v02.api.letsencrypt.org/directory"
-      : "https://acme-staging-v02.api.letsencrypt.org/directory",
+    value:
+      production === null || production === true
+        ? "https://acme-v02.api.letsencrypt.org/directory"
+        : "https://acme-staging-v02.api.letsencrypt.org/directory",
   });
 
   template.spec.template.spec.containers = [container];
