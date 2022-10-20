@@ -331,42 +331,50 @@ function copy(item) {
 }
 
 async function getCurrentProxySitesConfig() {
-  const currentConfig = await runHostScript(
-    "microk8s kubectl get ds/proxy-auto-ssl -o json",
-    false,
-    true
-  );
+  try {
+    const currentConfig = await runHostScript(
+      "microk8s kubectl get ds/proxy-auto-ssl -o json",
+      false,
+      true
+    );
 
-  const configStr = currentConfig.lines[0];
-  if (!configStr) {
-    return null;
-  }
+    const configStr = currentConfig.lines[0];
+    if (!configStr) {
+      return null;
+    }
 
-  const config = JSON.parse(configStr);
-  const env = config.spec.template.spec.containers[0].env.find(
-    (x) => x.name === "SITES"
-  );
-  return env.value;
+    const config = JSON.parse(configStr);
+    const env = config.spec.template.spec.containers[0].env.find(
+      (x) => x.name === "SITES"
+    );
+    return env.value;
+  } catch (error) {}
+
+  return null;
 }
 
 async function getCurrentProxyProductionMode() {
-  const currentConfig = await runHostScript(
-    "microk8s kubectl get ds/proxy-auto-ssl -o json",
-    false,
-    true
-  );
+  try {
+    const currentConfig = await runHostScript(
+      "microk8s kubectl get ds/proxy-auto-ssl -o json",
+      false,
+      true
+    );
 
-  const configStr = currentConfig.lines[0];
-  if (!configStr) {
-    return null;
-  }
+    const configStr = currentConfig.lines[0];
+    if (!configStr) {
+      return null;
+    }
 
-  const config = JSON.parse(configStr);
-  const env = config.spec.template.spec.containers[0].env.find(
-    (x) => x.name === "LETSENCRYPT_URL"
-  );
+    const config = JSON.parse(configStr);
+    const env = config.spec.template.spec.containers[0].env.find(
+      (x) => x.name === "LETSENCRYPT_URL"
+    );
 
-  return env.value === "https://acme-v02.api.letsencrypt.org/directory";
+    return env.value === "https://acme-v02.api.letsencrypt.org/directory";
+  } catch (error) {}
+
+  return null;
 }
 
 async function removeServices() {
