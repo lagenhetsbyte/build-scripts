@@ -251,7 +251,7 @@ async function generateServiceTemplate(services) {
       }
     }
 
-    if (Array.isArray(service.env)) {
+    if (service.env && typeof service.env === "object") {
       container.env = [];
       for (const key of Object.keys(service.env)) {
         container.env.push({ name: key, value: service.env[key] });
