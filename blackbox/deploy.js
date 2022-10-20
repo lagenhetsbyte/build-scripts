@@ -32,7 +32,9 @@ async function deploy() {
     await runHostScript("microk8s kubectl apply -f generated-service.json");
 
     for (const service of instruction.services) {
-      await waitForCorrectDnsIp(service.domain, instruction.serverExternalIp);
+      for (const domain of service.domains) {
+        await waitForCorrectDnsIp(domain, instruction.serverExternalIp);
+      }
     }
 
     await runHostScript("microk8s kubectl apply -f generated-proxy.json");
@@ -217,6 +219,7 @@ async function generateServiceTemplate(services) {
     cTDeployment.metadata.name = service.name;
     cTDeployment.metadata.labels.app = service.name;
     cTDeployment.spec.selector.matchLabels.app = service.name;
+    cTDeployment.spec.replicas = service.instances || 1;
     cTDeployment.spec.template.metadata.labels.app = service.name;
 
     if (service.volumes) {
@@ -281,18 +284,23 @@ async function generateProxyTemplate(
 
   const currentSites = await getCurrentProxySitesConfig();
   if (currentSites) {
-    const arr = currentSites.split(";");
+    const arr = currentSites.split(";").map((x) => x.trim());
     const filtered = arr.filter(
       (x) =>
-        !services.some((s) => x.trim().includes(`${s.domain}=`)) &&
-        !removeServices.some((rs) => x.trim().includes(`${rs.domain}=`))
+        !services.some((s) => s.domains.some((d) => x.includes(`${d}=`))) &&
+        !removeServices.some((rs) => x.includes(`${rs.domain}=`))
     );
 
     sites = filtered.join(";");
+    if (filtered.length === 1) {
+      sites += ";";
+    }
   }
 
   for (const service of services) {
-    sites += `${service.domain}=localhost:${service.servicePort};`;
+    for (const domain of service.domains) {
+      sites += `${domain}=localhost:${service.servicePort};`;
+    }
   }
 
   container.env.push({
