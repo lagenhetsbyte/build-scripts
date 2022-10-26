@@ -8,6 +8,7 @@ const {
   deleteConfigPath,
   createConfigPath,
   deleteFile,
+  getCurrentServiceInfo,
 } = require("./helpers");
 const path = require("path");
 
@@ -17,10 +18,15 @@ let templatePath = "";
 async function deploy(instruction) {
   let isSuccess = true;
 
+  const currentServices = getCurrentServiceInfo();
   for (const service of instruction.services) {
-    if (!service.forceDeployment) {
+    if (
+      !service.forceDeployment &&
+      currentServices.some((x) => x.name == service.name)
+    ) {
       const serviceDeploymentStatus = await runHostScript(
-        `microk8s kubectl rollout status deployment ${service.name}`
+        `microk8s kubectl rollout status deployment ${service.name}`,
+        false
       );
 
       if (serviceDeploymentStatus.code !== 0) {
