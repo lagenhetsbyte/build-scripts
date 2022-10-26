@@ -32,12 +32,12 @@ sudo apt install fail2ban -y
 
 echo "Install microk8s snap"
 sudo snap install microk8s --classic --channel=1.25
+echo "Check microk8s status"
+sudo microk8s status --wait-ready
 echo "Set microk8s user"
 sudo usermod -a -G microk8s $USER
 echo "Set kube user"
 sudo chown -f -R $USER ~/.kube
-echo "Check microk8s status"
-sudo microk8s status --wait-ready
 echo "Enable microk8s addons"
 sudo microk8s enable dns
 echo "Set microk8s alias"
