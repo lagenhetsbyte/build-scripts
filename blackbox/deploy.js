@@ -1,168 +1,109 @@
-const dns = require("dns");
 const fs = require("fs");
-const exec = require("child_process").exec;
+const {
+  runHostScript,
+  getMk8sCurrentConfig,
+  getServicePort,
+  getServicePorts,
+  copy,
+  deleteConfigPath,
+  createConfigPath,
+  deleteFile,
+} = require("./helpers");
+const path = require("path");
 
-const instruction = JSON.parse(fs.readFileSync("instruction.json"));
-const timeout = instruction.deploymentTimeout || 60;
+let timeout = "90s";
+let templatePath = "";
 
-async function deploy() {
-  try {
-    if (!instruction.forceDeployment) {
-      const podStatus = await runHostScript(
-        "microk8s kubectl rollout status deployment"
+async function deploy(instruction) {
+  let isSuccess = true;
+
+  for (const service of instruction.services) {
+    if (!service.forceDeployment) {
+      const serviceDeploymentStatus = await runHostScript(
+        `microk8s kubectl rollout status deployment ${service.name}`
       );
 
-      if (podStatus.code !== 0) {
-        console.log("Not ready for rollout!");
-        process.exit(1);
+      if (serviceDeploymentStatus.code !== 0) {
+        throw new Error("Not ready for rollout!");
       }
     }
 
-    if (instruction.dockerLoginCommand) {
-      await runHostScript(instruction.dockerLoginCommand);
+    console.log("Waiting for current proxy deployment to complete");
+    await runHostScript(`microk8s kubectl rollout status ds proxy-auto-ssl`);
+
+    console.log("Generating configs in ", templatePath);
+    generateTemplates(service, instruction.sslProduction);
+
+    await runHostScript(
+      `microk8s kubectl apply -f ${path.join(
+        templatePath,
+        "generated-storage.json"
+      )}`,
+      false
+    );
+
+    await runHostScript(
+      `microk8s kubectl apply -f ${path.join(
+        templatePath,
+        "generated-service.json"
+      )}`
+    );
+
+    await runHostScript(
+      `microk8s kubectl apply -f ${path.join(
+        templatePath,
+        "generated-proxy.json"
+      )} `
+    );
+
+    if (service.dockerLoginCommand) {
+      await runHostScript(service.dockerLoginCommand);
       await runHostScript(
         "sudo cp /root/.docker/config.json /var/snap/microk8s/common/var/lib/kubelet/"
       );
     }
 
-    await runHostScript(
-      "microk8s kubectl apply -f generated-storage.json",
+    const deployResult = await runHostScript(
+      `microk8s kubectl rollout status deployment ${service.name} --watch --timeout ${timeout}`,
       false
     );
-    await runHostScript("microk8s kubectl apply -f generated-service.json");
 
-    for (const service of instruction.services) {
-      for (const domain of service.domains) {
-        await waitForCorrectDnsIp(domain, instruction.serverExternalIp);
-      }
-    }
+    if (deployResult.code !== 0) {
+      console.log("Rollout for", service.name, "failed, starting rollback.");
 
-    await runHostScript("microk8s kubectl apply -f generated-proxy.json");
-
-    for (const service of instruction.services) {
-      // Let the rollout deploy in 60 sec, or timeout and start rollback
-      const deployResult = await runHostScript(
-        `microk8s kubectl rollout status deployment ${service.name} --watch --timeout ${timeout}s`,
-        false
+      await runHostScript(
+        `microk8s kubectl rollout undo deployment ${service.name}`
       );
 
-      // Rollback
-      if (deployResult.code !== 0) {
-        await runHostScript(
-          `microk8s kubectl rollout undo deployment ${service.name}`
-        );
+      await runHostScript(
+        `microk8s kubectl rollout status deployment ${service.name} --watch --timeout ${timeout}`
+      );
 
-        await runHostScript(
-          `microk8s kubectl rollout status deployment ${service.name} --watch --timeout ${timeout}s`
-        );
-
-        process.exit(1);
-      }
+      isSuccess = false;
     }
+  }
 
-    process.exit(0);
-  } catch (error) {
-    process.exit(1);
+  if (!isSuccess) {
+    throw new Error("Rollout failed for at least one service");
   }
 }
 
-function runHostScript(command, failOnError = true, skipLog) {
-  if (!skipLog) {
-    console.log("Running command:", command);
+function generateTemplates(service, sslProduction) {
+  let volumes = [];
+
+  if (Array.isArray(service.volumes)) {
+    volumes = service.volumes
+      .map((v) => ({ ...v, name: `${service.name}-${v.name}` }))
+      .flat();
   }
-
-  return new Promise((resolve, reject) => {
-    const commandExec = exec(command);
-    let lines = [];
-
-    commandExec.stdout.on("data", (data) => {
-      lines.push(
-        data
-          .toString("utf8")
-          .replace(/\r\n|\r|\n/g, "")
-          .trim()
-      );
-    });
-
-    commandExec.stderr.on("data", (data) => {
-      lines.push(
-        data
-          .toString("utf8")
-          .replace(/\r\n|\r|\n/g, "")
-          .trim()
-      );
-    });
-
-    commandExec.on("exit", (code) => {
-      const toReturn = { code: code, lines };
-      if (code !== 0 && failOnError) {
-        console.error("Command error:");
-        lines.map((x) => console.log(x));
-        reject(toReturn);
-      }
-
-      if (!skipLog) {
-        lines.map((x) => console.log(x));
-      }
-
-      resolve(toReturn);
-    });
-  });
-}
-
-function generateTemplates() {
-  const serviceVolumes = instruction.services
-    .filter((x) => x.volumes)
-    .map((x) => x.volumes.map((s) => ({ ...s, name: `${x.name}-${s.name}` })))
-    .flat();
 
   generateStorageTemplate([
-    ...serviceVolumes,
+    ...volumes,
     { name: "proxy-volume", containerPath: "/etc/resty-auto-ssl", size: 1 },
   ]);
 
-  generateServiceTemplate(instruction.services);
-  generateProxyTemplate(
-    instruction.services,
-    instruction.sslProductionMode,
-    instruction.removeServices
-  );
-}
-
-function getDnsRecords(domain) {
-  return new Promise((resolve) => {
-    dns.lookup(
-      domain,
-      {
-        all: true,
-      },
-      (err, addresses) => {
-        if (err) {
-          resolve([]);
-        }
-
-        resolve(addresses.filter((x) => x.family === 4).map((x) => x.address));
-      }
-    );
-  });
-}
-
-async function waitForCorrectDnsIp(domain, expecting) {
-  while (true) {
-    console.log("Checking DNS record for:", domain, "Expecting:", expecting);
-
-    const response = await getDnsRecords(domain);
-    if (response.some((x) => x == expecting)) {
-      break;
-    } else {
-      console.log("DNS records did not match expected.");
-    }
-
-    await new Promise((resolve) => setTimeout(3000, resolve));
-  }
-
-  console.log("Found correct DNS record.");
-  return true;
+  generateServiceTemplate(service);
+  generateProxyTemplate(service, sslProduction, []);
 }
 
 async function generateStorageTemplate(storages) {
@@ -191,90 +132,90 @@ async function generateStorageTemplate(storages) {
     }
   }
 
-  fs.writeFileSync("generated-storage.json", JSON.stringify(template));
+  fs.writeFileSync(
+    path.join(templatePath, "generated-storage.json"),
+    JSON.stringify(template)
+  );
 }
 
-async function generateServiceTemplate(services) {
+async function generateServiceTemplate(service) {
   const template = JSON.parse(fs.readFileSync("./templates/service.json"));
   const tService = template.items[0];
   const tDeployment = template.items[1];
   template.items = [];
 
-  for (const service of services) {
-    const cTService = copy(tService);
-    cTService.metadata.name = service.name;
-    cTService.metadata.labels.app = service.name;
-    cTService.spec.ports = [
-      {
-        name: `${service.appPort}-${service.appPort}`,
-        protocol: "TCP",
-        port: service.appPort,
-        targetPort: service.appPort,
-        nodePort: service.servicePort,
-      },
-    ];
-    cTService.spec.selector.app = service.name;
+  const cTService = copy(tService);
+  cTService.metadata.name = service.name;
+  cTService.metadata.labels.app = service.name;
+  cTService.spec.ports = [
+    {
+      name: `${service.appPort}-${service.appPort}`,
+      protocol: "TCP",
+      port: service.appPort,
+      targetPort: service.appPort,
+      nodePort: service.servicePort,
+    },
+  ];
+  cTService.spec.selector.app = service.name;
 
-    const cTDeployment = copy(tDeployment);
-    cTDeployment.metadata.name = service.name;
-    cTDeployment.metadata.labels.app = service.name;
-    cTDeployment.spec.selector.matchLabels.app = service.name;
-    cTDeployment.spec.replicas = service.instances || 1;
-    cTDeployment.spec.template.metadata.labels.app = service.name;
+  const cTDeployment = copy(tDeployment);
+  cTDeployment.metadata.name = service.name;
+  cTDeployment.metadata.labels.app = service.name;
+  cTDeployment.spec.selector.matchLabels.app = service.name;
+  cTDeployment.spec.replicas = service.instances || 1;
+  cTDeployment.spec.template.metadata.labels.app = service.name;
 
-    if (service.volumes) {
-      cTDeployment.spec.template.spec.volumes = [];
-      for (const storage of service.volumes) {
-        cTDeployment.spec.template.spec.volumes.push({
-          name: `${service.name}-${storage.name}`,
-          persistentVolumeClaim: {
-            claimName: `${service.name}-${storage.name}-claim`,
-          },
-        });
-      }
+  if (service.volumes) {
+    cTDeployment.spec.template.spec.volumes = [];
+    for (const storage of service.volumes) {
+      cTDeployment.spec.template.spec.volumes.push({
+        name: `${service.name}-${storage.name}`,
+        persistentVolumeClaim: {
+          claimName: `${service.name}-${storage.name}-claim`,
+        },
+      });
     }
-
-    const container = copy(cTDeployment.spec.template.spec.containers[0]);
-    cTDeployment.spec.template.spec.containers = [];
-    container.name = service.name;
-    container.image = service.image;
-    container.ports = [{ containerPort: service.appPort }];
-    container.readinessProbe.httpGet.port = service.appPort;
-
-    if (service.volumes) {
-      container.volumeMounts = [];
-      for (const storage of service.volumes) {
-        container.volumeMounts.push({
-          mountPath: storage.containerPath,
-          name: `${service.name}-${storage.name}`,
-        });
-      }
-    }
-
-    if (service.env && typeof service.env === "object") {
-      container.env = [];
-      for (const key of Object.keys(service.env)) {
-        container.env.push({ name: key, value: service.env[key] });
-      }
-    }
-
-    if (service.healthCheck && service.healthCheck.disabled) {
-      delete container.readinessProbe;
-    }
-    cTDeployment.spec.template.spec.containers.push(container);
-
-    template.items.push(cTService);
-    template.items.push(cTDeployment);
   }
 
-  fs.writeFileSync("generated-service.json", JSON.stringify(template));
+  const container = copy(cTDeployment.spec.template.spec.containers[0]);
+  cTDeployment.spec.template.spec.containers = [];
+  container.name = service.name;
+  container.image = service.image;
+  container.ports = [{ containerPort: service.appPort }];
+  container.readinessProbe.httpGet.port = service.appPort;
+
+  if (service.volumes) {
+    container.volumeMounts = [];
+    for (const storage of service.volumes) {
+      container.volumeMounts.push({
+        mountPath: storage.containerPath,
+        name: `${service.name}-${storage.name}`,
+      });
+    }
+  }
+
+  if (service.env && typeof service.env === "object") {
+    container.env = [];
+    for (const key of Object.keys(service.env)) {
+      container.env.push({ name: key, value: service.env[key] });
+    }
+  }
+
+  if (service.healthCheck && service.healthCheck.disabled) {
+    delete container.readinessProbe;
+  }
+  cTDeployment.spec.template.spec.containers.push(container);
+
+  template.items.push(cTService);
+  template.items.push(cTDeployment);
+
+  fs.writeFileSync(
+    path.join(templatePath, "generated-service.json"),
+    JSON.stringify(template)
+  );
 }
 
-async function generateProxyTemplate(
-  services,
-  production,
-  removeServices = []
-) {
+async function generateProxyTemplate(service, production, removeServices = []) {
   const template = JSON.parse(fs.readFileSync("./templates/proxy.json"));
   const container = template.spec.template.spec.containers[0];
   let sites = "";
@@ -287,7 +228,7 @@ async function generateProxyTemplate(
     const arr = currentSites.split(";").map((x) => x.trim());
     const filtered = arr.filter(
       (x) =>
-        !services.some((s) => s.domains.some((d) => x.includes(`${d}=`))) &&
+        !service.domains.some((d) => x.includes(`${d}=`)) &&
         !removeServices.some((rs) => x.includes(`${rs.domain}=`))
     );
 
@@ -297,10 +238,8 @@ async function generateProxyTemplate(
     }
   }
 
-  for (const service of services) {
-    for (const domain of service.domains) {
-      sites += `${domain}=localhost:${service.servicePort};`;
-    }
+  for (const domain of service.domains) {
+    sites += `${domain}=localhost:${service.servicePort};`;
   }
 
   container.env.push({
@@ -323,27 +262,19 @@ async function generateProxyTemplate(
 
   template.spec.template.spec.containers = [container];
 
-  fs.writeFileSync("generated-proxy.json", JSON.stringify(template));
-}
-
-function copy(item) {
-  return JSON.parse(JSON.stringify(item));
+  fs.writeFileSync(
+    path.join(templatePath, "generated-proxy.json"),
+    JSON.stringify(template)
+  );
 }
 
 async function getCurrentProxySitesConfig() {
   try {
-    const currentConfig = await runHostScript(
-      "microk8s kubectl get ds/proxy-auto-ssl -o json",
-      false,
-      true
-    );
-
-    const configStr = currentConfig.lines[0];
-    if (!configStr) {
+    const config = await getMk8sCurrentConfig("ds/proxy-auto-ssl");
+    if (!config) {
       return null;
     }
 
-    const config = JSON.parse(configStr);
     const env = config.spec.template.spec.containers[0].env.find(
       (x) => x.name === "SITES"
     );
@@ -355,18 +286,11 @@ async function getCurrentProxySitesConfig() {
 
 async function getCurrentProxyProductionMode() {
   try {
-    const currentConfig = await runHostScript(
-      "microk8s kubectl get ds/proxy-auto-ssl -o json",
-      false,
-      true
-    );
-
-    const configStr = currentConfig.lines[0];
-    if (!configStr) {
+    const config = await getMk8sCurrentConfig("ds/proxy-auto-ssl");
+    if (!config) {
       return null;
     }
 
-    const config = JSON.parse(configStr);
     const env = config.spec.template.spec.containers[0].env.find(
       (x) => x.name === "LETSENCRYPT_URL"
     );
@@ -377,7 +301,7 @@ async function getCurrentProxyProductionMode() {
   return null;
 }
 
-async function removeServices() {
+async function removeServices(instruction) {
   if (!Array.isArray(instruction.removeServices)) {
     return;
   }
@@ -397,13 +321,48 @@ async function removeServices() {
 
 async function run() {
   try {
-    generateTemplates();
-    await deploy();
-    await removeServices();
+    const instructionFile = process.argv[2];
+    if (!fs.existsSync(instructionFile)) {
+      throw new Error("The instruction file doesnt exist:", instructionFile);
+    }
+
+    templatePath = createConfigPath();
+    const instruction = JSON.parse(fs.readFileSync(instructionFile));
+    if (instruction.deploymentTimeout) {
+      timeout = `${instruction.deploymentTimeout}s`;
+    }
+
+    instruction.services = await getServicePorts(instruction.services);
+    await deploy(instruction);
+    await removeServices(instruction);
+    await deleteConfigPath(templatePath);
+    await deleteFile(instructionFile);
+    process.exit(0);
   } catch (error) {
-    console.error(error.message);
+    console.error(error);
     process.exit(1);
   }
 }
 
 run();
+
+//test();
+
+async function test() {
+  // const json = require("./data.json");
+
+  // const currentInfo = json.items.map((x) => {
+  //   return {
+  //     port:
+  //       x.spec.ports[0] && x.spec.ports[0].nodePort
+  //         ? x.spec.ports[0].nodePort
+  //         : null,
+  //     name: x.metadata.name,
+  //   };
+  // });
+
+  // console.log(currentInfo);
+
+  const p = await getServicePort("lagenhetsbyte-paymentss");
+  console.log(p);
+}
