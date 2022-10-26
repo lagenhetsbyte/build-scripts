@@ -51,7 +51,7 @@ DEPLOYMENT_INSTRUCTION_FILE="$IMAGE_TAG-deploy.json"
 scp -o StrictHostKeyChecking=no -i "$SSH_KEY_DIR" $INSTRUCTION_FILE "$VPS_USER"@"$VPS_HOST":"$DEPLOYMENT_INSTRUCTION_FILE"
 
 COMMAND_1="wget -N https://github.com/lagenhetsbyte/build-scripts/raw/master/blackbox/blackbox.zip && unzip -o blackbox.zip"
-COMMAND_2="node replace_image.js "$REPOSITORY_URI:$IMAGE_TAG""
+COMMAND_2="node replace_image.js "$DEPLOYMENT_INSTRUCTION_FILE" "$REPOSITORY_URI:$IMAGE_TAG""
 COMMAND_3="sudo node deploy.js "$DEPLOYMENT_INSTRUCTION_FILE""
 
 echo Connecting and running commands on remote server
