@@ -14,8 +14,9 @@ deploy.sh is made for AWS ECR, but can be modified to work with other services.
 ```yaml
 - name: Deploy
   run: |
+    cp ./deploy-dev ${{ github.run_number }}-deploy.json && \
     curl -L https://raw.githubusercontent.com/lagenhetsbyte/build-scripts/master/blackbox/deploy.sh | bash -s \
-    IMAGE_TAG="$prod-{{ github.run_number }}" \
+    IMAGE_TAG="prod-${{ github.run_number }}" \
     AWS_REPONAME="testservice" \
     AWS_REGION="eu-north-1" \
     AWS_DOMAIN="123123123.dkr.ecr.eu-north-1.amazonaws.com" \
@@ -24,7 +25,7 @@ deploy.sh is made for AWS ECR, but can be modified to work with other services.
     AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}" \
     AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
     SSH_KEY_DIR="../ssh_key.pem" \
-    INSTRUCTION_FILE="./{{ github.run_number }}-deploy-prod.json"
+    INSTRUCTION_FILE="./${{ github.run_number }}-deploy.json"
 ```
 
 ## Instruction file
