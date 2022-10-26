@@ -18,7 +18,7 @@ let templatePath = "";
 async function deploy(instruction) {
   let isSuccess = true;
 
-  const currentServices = getCurrentServiceInfo();
+  const currentServices = await getCurrentServiceInfo();
   for (const service of instruction.services) {
     if (
       !service.forceDeployment &&
