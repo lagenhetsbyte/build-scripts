@@ -46,7 +46,7 @@ echo Pushing the Docker images
 docker push $REPOSITORY_URI:latest
 docker push $REPOSITORY_URI:$IMAGE_TAG
 
-RANDOM_STR=$(cat /dev/urandom | tr -dc '[:alpha:]' | fold -w ${1:-20} | head -n 1)
+RANDOM_STR=$(tr </dev/urandom -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
 
 DEPLOYMENT_INSTRUCTION_FILE="$IMAGE_TAG-deploy-$RANDOM_STR.json"
 
