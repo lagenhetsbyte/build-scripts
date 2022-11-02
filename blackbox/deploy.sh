@@ -46,7 +46,9 @@ echo Pushing the Docker images
 docker push $REPOSITORY_URI:latest
 docker push $REPOSITORY_URI:$IMAGE_TAG
 
-DEPLOYMENT_INSTRUCTION_FILE="$IMAGE_TAG-deploy.json"
+RANDOM_STR=$(cat /dev/urandom | tr -dc '[:alpha:]' | fold -w ${1:-20} | head -n 1)
+
+DEPLOYMENT_INSTRUCTION_FILE="$IMAGE_TAG-deploy-$RANDOM_STR.json"
 
 scp -o StrictHostKeyChecking=no -i "$SSH_KEY_DIR" $INSTRUCTION_FILE "$VPS_USER"@"$VPS_HOST":"$DEPLOYMENT_INSTRUCTION_FILE"
 
