@@ -80,7 +80,7 @@ All options:
   ],
   // Optional
   "sslProductionMode": false, // For testing automatic SSL, without being banned from lets encrypt for trying too many times.
-  "deploymentTimeout": 60, // Default to 60 (sec). Rollsback on timeout. Why? Because if a pod fails to start, it can take 30 minutes to change state to failed, which is too long.
+  "deploymentTimeout": 60, // Default to 120 (sec). Rollsback on timeout. Why? Because if a pod fails to start, it can take 30 minutes to change state to failed, which is too long.
   "removeServices": [
     // This is to be able to remove a service that is no longer in use.
     {

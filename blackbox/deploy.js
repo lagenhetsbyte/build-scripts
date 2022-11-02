@@ -12,10 +12,15 @@ const {
 } = require("./helpers");
 const path = require("path");
 
-let timeout = "90s";
+let timeout = 120;
 let templatePath = "";
 
 async function deploy(instruction) {
+  let timeoutStr = `--watch --timeout ${timeout}s`;
+  if (!timeout) {
+    timeoutStr = "";
+  }
+
   let isSuccess = true;
 
   const currentServices = await getCurrentServiceInfo();
@@ -40,6 +45,13 @@ async function deploy(instruction) {
     console.log("Generating configs in ", templatePath);
     generateTemplates(service, instruction.sslProduction);
 
+    if (service.dockerLoginCommand) {
+      await runHostScript(service.dockerLoginCommand);
+      await runHostScript(
+        "sudo cp /root/.docker/config.json /var/snap/microk8s/common/var/lib/kubelet/"
+      );
+    }
+
     await runHostScript(
       `microk8s kubectl apply -f ${path.join(
         templatePath,
@@ -62,15 +74,8 @@ async function deploy(instruction) {
       )} `
     );
 
-    if (service.dockerLoginCommand) {
-      await runHostScript(service.dockerLoginCommand);
-      await runHostScript(
-        "sudo cp /root/.docker/config.json /var/snap/microk8s/common/var/lib/kubelet/"
-      );
-    }
-
     const deployResult = await runHostScript(
-      `microk8s kubectl rollout status deployment ${service.name} --watch --timeout ${timeout}`,
+      `microk8s kubectl rollout status deployment ${service.name} ${timeoutStr}`,
       false
     );
 
@@ -82,7 +87,7 @@ async function deploy(instruction) {
       );
 
       await runHostScript(
-        `microk8s kubectl rollout status deployment ${service.name} --watch --timeout ${timeout}`
+        `microk8s kubectl rollout status deployment ${service.name} ${timeoutStr}`
       );
 
       isSuccess = false;
@@ -334,8 +339,8 @@ async function run() {
 
     templatePath = createConfigPath();
     const instruction = JSON.parse(fs.readFileSync(instructionFile));
-    if (instruction.deploymentTimeout) {
-      timeout = `${instruction.deploymentTimeout}s`;
+    if (!isNaN(instruction.deploymentTimeout)) {
+      timeout = instruction.deploymentTimeout;
     }
 
     instruction.services = await getServicePorts(instruction.services);
