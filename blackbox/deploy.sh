@@ -38,12 +38,11 @@ REPOSITORY_URI=$AWS_DOMAIN/$AWS_REPONAME
 echo Build started on $(date)
 echo Building the Docker image...
 # build image
-docker build -t $REPOSITORY_URI:latest -t $REPOSITORY_URI:$IMAGE_TAG .
+docker build -t $REPOSITORY_URI:$IMAGE_TAG .
 
 echo Build completed on $(date)
 echo Pushing the Docker images
 # push image
-docker push $REPOSITORY_URI:latest
 docker push $REPOSITORY_URI:$IMAGE_TAG
 
 RANDOM_STR=$(tr </dev/urandom -dc 'a-zA-Z0-9' | fold -w 20 | head -n 1)
