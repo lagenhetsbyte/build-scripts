@@ -60,6 +60,11 @@
                     "containerPort": 3001
                   }
                 ],
+                "lifecycle": {
+                  "preStop": {
+                    "exec": { "command": ["sleep", "10"] }
+                  }
+                },
                 "readinessProbe": {
                   "initialDelaySeconds": 5,
                   "periodSeconds": 2,
