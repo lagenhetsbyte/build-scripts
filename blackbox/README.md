@@ -7,7 +7,7 @@ Install latest Ubuntu LTS version and run these commands:
 
 ```
 wget https://raw.githubusercontent.com/lagenhetsbyte/build-scripts/master/blackbox/setup.sh
-sudo sh ./setup.sh
+sudo bash ./setup.sh
 ```
 
 ## Example 1. Deploy directly on Blackbox
@@ -87,6 +87,26 @@ All options:
 ## Example 2. Deploy from github action
 
 deploy.sh is made for AWS ECR, but can be modified to work with other services.
+
+```yaml
+- name: Deploy
+  run: |
+    curl -L https://raw.githubusercontent.com/lagenhetsbyte/build-scripts/master/blackbox/deploy.sh | bash -s \
+    INSTRUCTION_FILE="./deploy-prod.json" \
+    IMAGE_TAG="$prod-{{ github.run_number }}" \
+    AWS_REPONAME="testservice" \
+    AWS_REGION="eu-north-1" \
+    AWS_DOMAIN="123123123.dkr.ecr.eu-north-1.amazonaws.com" \
+    VPS_HOST="13.13.13.13" \
+    VPS_USER="ubuntu" \
+    AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}" \
+    AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
+    SSH_KEY_DIR="../ssh_key.pem"
+```
+
+## Example 3. Deploy from github action
+
+deploy.sh is made for AWS ECR, but can be modified to work with other services. Make sure that the Blackbox is already logged in on the AWS account.
 
 ```yaml
 - name: Deploy
