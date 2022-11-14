@@ -223,7 +223,9 @@ async function generateServiceTemplate(service) {
 
   if (service.healthCheck && service.healthCheck.disabled) {
     delete container.readinessProbe;
+    delete container.startupProbe;
   }
+  
   cTDeployment.spec.template.spec.containers.push(container);
 
   template.items.push(cTService);
@@ -245,7 +247,10 @@ async function generateProxyTemplate(service, production, removeServices = []) {
 
   const currentSites = await getCurrentProxySitesConfig();
   if (currentSites) {
-    const arr = currentSites.split(";").map((x) => x.trim());
+    const arr = currentSites
+      .split(";")
+      .filter((x) => x)
+      .map((x) => x.trim());
     const filtered = arr.filter(
       (x) =>
         !service.domains.some((d) => x.includes(`${d}=`)) &&
