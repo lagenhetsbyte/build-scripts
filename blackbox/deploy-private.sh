@@ -26,7 +26,7 @@ done
 REPOSITORY_URI=$REGISTRY_DOMAIN/$REPONAME
 
 echo "Logging in to docker"
-sudo docker login "$REGISTRY_DOMAIN" --username "$REGISTRY_USER" --password "$REGISTRY_PASSWORD"
+echo $REGISTRY_PASSWORD | docker login --username $REGISTRY_USER --password-stdin $REGISTRY_DOMAIN
 
 echo "Build started on $(date)"
 echo "Building the Docker image..."
