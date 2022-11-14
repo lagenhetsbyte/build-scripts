@@ -40,7 +40,7 @@ async function deploy(instruction) {
     }
 
     console.log("Waiting for current proxy deployment to complete");
-    await runHostScript(`microk8s kubectl rollout status ds proxy-auto-ssl`);
+    await runHostScript(`microk8s kubectl rollout status ds proxy-auto-ssl`, false);
 
     console.log("Generating configs in ", templatePath);
     generateTemplates(service, instruction.sslProduction);
