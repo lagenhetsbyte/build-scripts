@@ -200,6 +200,7 @@ async function generateServiceTemplate(service) {
   container.startupProbe.httpGet.port = service.appPort;
 
   if (service.healthCheck && service.healthCheck.path) {
+    container.readinessProbe.httpGet.path = service.healthCheck.path;
     container.startupProbe.httpGet.path = service.healthCheck.path;
   }
 
