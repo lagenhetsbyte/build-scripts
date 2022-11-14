@@ -1,30 +1,21 @@
 # Blackbox
-
 Microk8s with automatic SSL certs, automatic rollback, and zero downtime (except when adding a domain, which restarts the proxy). Inspired by AWS Lightsail.
 
-## Prep
+## Preps
 
-1. Install Ubuntu.
-2. Run setup.sh.
+Install latest Ubuntu LTS version and run these commands:
 
-## Deploy from github action
+```
+wget https://raw.githubusercontent.com/lagenhetsbyte/build-scripts/master/blackbox/setup.sh
+sudo sh ./setup.sh
+```
 
-deploy.sh is made for AWS ECR, but can be modified to work with other services.
+## Example 1. Deploy directly on Blackbox
 
-```yaml
-- name: Deploy
-  run: |
-    curl -L https://raw.githubusercontent.com/lagenhetsbyte/build-scripts/master/blackbox/deploy.sh | bash -s \
-    INSTRUCTION_FILE="./deploy-prod.json" \
-    IMAGE_TAG="$prod-{{ github.run_number }}" \
-    AWS_REPONAME="testservice" \
-    AWS_REGION="eu-north-1" \
-    AWS_DOMAIN="123123123.dkr.ecr.eu-north-1.amazonaws.com" \
-    VPS_HOST="13.13.13.13" \
-    VPS_USER="ubuntu" \
-    AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}" \
-    AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
-    SSH_KEY_DIR="../ssh_key.pem"
+```
+wget https://github.com/lagenhetsbyte/build-scripts/raw/master/blackbox/blackbox.zip
+unzip ./blackbox.zip
+sudo node deploy.js instruction.json
 ```
 
 ## Instruction file
@@ -37,6 +28,7 @@ Simple example:
 {
   "services": [
     {
+      "image": "strm/helloworld-http"
       "dockerLoginCommand": "sudo aws ecr get-login-password --region eu-north-1 | sudo docker login --username AWS --password-stdin 123123123.dkr.ecr.eu-north-1.amazonaws.com",
       "domains": ["somedomain.com"],
       "name": "service1",
@@ -57,7 +49,7 @@ All options:
       // dockerLoginCommand is required. Bash command line, to be able to pull images from private repos.
       "domains": ["somedomain.com"], // Required. These will be added to the proxy.
       "name": "service1", // Required, must be unique.
-      "image": "", // deploy.sh adds the new image here. Otherwise, this field is required. Don't use :latest, it brakes automatic rollback.
+      "image": "strm/helloworld-http", // deploy.sh adds the new image here. Otherwise, this field is required. Don't use :latest, it brakes automatic rollback.
       "appPort": 3001, // Requred.
       "env": {
         // Optional.
@@ -73,7 +65,8 @@ All options:
       ],
       "healthCheck": {
         // Optional, defaults to false.
-        "disabled": false
+        "disabled": false,
+        "path": "/" // Optional, default is /. Always a GET.
       },
       "instances": 1 // Optional, default is 1. Lowest amount of instances running at the same time.
     }
@@ -91,9 +84,22 @@ All options:
 }
 ```
 
-## Setup Blackbox
+## Example 2. Deploy from github action
 
-```
-wget https://raw.githubusercontent.com/lagenhetsbyte/build-scripts/master/blackbox/setup.sh
-sudo sh ./setup.sh
+deploy.sh is made for AWS ECR, but can be modified to work with other services.
+
+```yaml
+- name: Deploy
+  run: |
+    curl -L https://raw.githubusercontent.com/lagenhetsbyte/build-scripts/master/blackbox/deploy.sh | bash -s \
+    INSTRUCTION_FILE="./deploy-prod.json" \
+    IMAGE_TAG="$prod-{{ github.run_number }}" \
+    AWS_REPONAME="testservice" \
+    AWS_REGION="eu-north-1" \
+    AWS_DOMAIN="123123123.dkr.ecr.eu-north-1.amazonaws.com" \
+    VPS_HOST="13.13.13.13" \
+    VPS_USER="ubuntu" \
+    AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}" \
+    AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
+    SSH_KEY_DIR="../ssh_key.pem"
 ```
