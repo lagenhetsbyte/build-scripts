@@ -90,3 +90,10 @@ All options:
   ]
 }
 ```
+
+## Setup Blackbox
+
+```
+wget https://raw.githubusercontent.com/lagenhetsbyte/build-scripts/master/blackbox/setup.sh
+sudo sh ./setup.sh
+```
