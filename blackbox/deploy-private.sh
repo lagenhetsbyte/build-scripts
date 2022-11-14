@@ -21,7 +21,7 @@ for ARGUMENT in "$@"; do
 
 done
 
-REPOSITORY_URI=$DOMAIN/$REPONAME
+REPOSITORY_URI=$REGISTRY_DOMAIN/$REPONAME
 
 echo "Build started on $(date)"
 echo "Building the Docker image..."
