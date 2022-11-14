@@ -40,4 +40,4 @@ COMMAND_2="node replace_image.js "$DEPLOYMENT_INSTRUCTION_FILE" "$REPOSITORY_URI
 COMMAND_3="sudo node deploy.js "$DEPLOYMENT_INSTRUCTION_FILE""
 
 echo "Connecting and running commands on remote server"
-ssh -o StrictHostKeyChecking=no -i "$SSH_KEY_DIR" "$VPS_USER"@"$VPS_HOST" ""$COMMAND_1"; "$COMMAND_2"; "$COMMAND_3";"
+ssh -o StrictHostKeyChecking=no -i "$SSH_KEY_DIR" "$USER"@"$HOST" ""$COMMAND_1"; "$COMMAND_2"; "$COMMAND_3";"
