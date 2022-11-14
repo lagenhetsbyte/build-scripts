@@ -40,7 +40,10 @@ async function deploy(instruction) {
     }
 
     console.log("Waiting for current proxy deployment to complete");
-    await runHostScript(`microk8s kubectl rollout status ds proxy-auto-ssl`, false);
+    await runHostScript(
+      `microk8s kubectl rollout status ds proxy-auto-ssl`,
+      false
+    );
 
     console.log("Generating configs in ", templatePath);
     generateTemplates(service, instruction.sslProduction);
@@ -194,6 +197,11 @@ async function generateServiceTemplate(service) {
   container.image = service.image;
   container.ports = [{ containerPort: service.appPort }];
   container.readinessProbe.httpGet.port = service.appPort;
+  container.startupProbe.httpGet.port = service.appPort;
+
+  if (service.healthCheck && service.healthCheck.path) {
+    container.startupProbe.httpGet.path = service.healthCheck.path;
+  }
 
   if (service.volumes) {
     container.volumeMounts = [];
