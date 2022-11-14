@@ -9,6 +9,8 @@ set -e
 #USER
 #SSH_KEY_DIR
 #INSTRUCTION_FILE
+#REGISTRY_USER
+#REGISTRY_PASSWORD
 
 echo "Variables:"
 
@@ -22,6 +24,9 @@ for ARGUMENT in "$@"; do
 done
 
 REPOSITORY_URI=$REGISTRY_DOMAIN/$REPONAME
+
+echo "Logging in to docker"
+sudo docker login "$REGISTRY_DOMAIN" --username "$REGISTRY_USER" --password "$REGISTRY_PASSWORD"
 
 echo "Build started on $(date)"
 echo "Building the Docker image..."
