@@ -23,7 +23,7 @@ IMAGE_DIRS=($(sudo ls -A1tr $REGISTRY_IMAGE_FULL_PATH | grep -P "("$TAG_PREFIX".
 
 for i in "${!IMAGE_DIRS[@]}"; do
     CURRENT_DIR=${IMAGE_DIRS[i]}
-    if [[ $i -gt $KEEP ]]; then
+    if [[ $i -gt $(($KEEP - 1)) ]]; then
         echo "Deleting $REPO:$CURRENT_DIR"
         sudo rm -Rf $REGISTRY_IMAGE_FULL_PATH/$CURRENT_DIR
         RESTART="yes"
