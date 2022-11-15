@@ -19,7 +19,7 @@ REGISTRY_REPO_PATH="/docker/registry/v2/repositories"
 REGISTRY_IMAGE_PATH="/_manifests/tags"
 REGISTRY_IMAGE_FULL_PATH=$BASE_PATH$REGISTRY_REPO_PATH/$REPO$REGISTRY_IMAGE_PATH
 
-IMAGE_DIRS=($(sudo ls -A1tr $REGISTRY_IMAGE_FULL_PATH | grep -P "("$TAG_PREFIX".?)"))
+IMAGE_DIRS=($(sudo ls -A1t $REGISTRY_IMAGE_FULL_PATH | grep -P "("$TAG_PREFIX".?)"))
 
 for i in "${!IMAGE_DIRS[@]}"; do
     CURRENT_DIR=${IMAGE_DIRS[i]}
