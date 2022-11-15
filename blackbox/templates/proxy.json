@@ -30,7 +30,7 @@
         "containers": [
           {
             "name": "nginx-ingress-lb",
-            "image": "valian/docker-nginx-auto-ssl",
+            "image": "elestio/nginx-auto-ssl",
             "ports": [
               {
                 "name": "http",
