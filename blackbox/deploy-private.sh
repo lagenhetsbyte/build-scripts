@@ -54,4 +54,3 @@ exitCode=$?
 if [ $exitCode -eq 0 ]; then
     ssh -o StrictHostKeyChecking=no -i "$SSH_KEY_DIR" "$USER"@"$HOST" "wget -N https://github.com/lagenhetsbyte/build-scripts/raw/master/blackbox/remove-private-registry-images.sh; sudo bash ./remove-private-registry-images.sh BASE_PATH="/mnt/docker-registry-storage" REPO=$REPO KEEP=5 TAG_PREFIX=$TAG_PREFIX"
 fi
-exit $exitCode
