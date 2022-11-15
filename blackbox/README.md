@@ -17,8 +17,7 @@ sudo bash ./setup.sh
 {
   "services": [
     {
-      "image": "strm/helloworld-http",
-      "dockerLoginCommand": "sudo aws ecr get-login-password --region eu-north-1 | sudo docker login --username AWS --password-stdin 123123123.dkr.ecr.eu-north-1.amazonaws.com",
+      "image": "strm/helloworld-http",      
       "domains": ["somedomain.com"],
       "name": "service1",
       "appPort": 3001
@@ -35,7 +34,7 @@ All options:
     {
       "forceDeployment": false, // Continues deployment without waiting for current deployment to complete.
       "dockerLoginCommand": "sudo aws ecr get-login-password --region eu-north-1 | sudo docker login --username AWS --password-stdin 123123123.dkr.ecr.eu-north-1.amazonaws.com",
-      // dockerLoginCommand is required. Bash command line, to be able to pull images from private repos.
+      // Optional. Bash command line to sync AWS access key with docker.
       "domains": ["somedomain.com"], // Required. These will be added to the proxy.
       "name": "service1", // Required, must be unique.
       "image": "strm/helloworld-http", // deploy.sh adds the new image here. Otherwise, this field is required. Don't use :latest, it brakes automatic rollback.
@@ -129,8 +128,7 @@ Create instruction for deployment
   "deploymentTimeout": 200,
   "services": [
     {
-      "image": "registry:2",
-      "dockerLoginCommand": "",
+      "image": "registry:2",      
       "domains": ["registry.some.domain"],
       "name": "docker-registry",
       "appPort": 5000,
