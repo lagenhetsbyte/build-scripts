@@ -114,6 +114,11 @@ function generateTemplates(service, sslProduction) {
   generateStorageTemplate([
     ...volumes,
     { name: "proxy-volume", containerPath: "/etc/resty-auto-ssl", size: 1 },
+    {
+      name: "proxy-config",
+      containerPath: "/usr/local/openresty/nginx/conf",
+      size: 0.5,
+    },
   ]);
 
   generateServiceTemplate(service);
@@ -340,8 +345,55 @@ async function removeServices(instruction) {
   }
 }
 
+async function patchProxyConfig() {
+  try {
+    const proxyConfigDir = "/mnt/proxy-config";
+
+    if (
+      fs.existsSync(proxyConfigDir) &&
+      fs.readdirSync(proxyConfigDir).length > 0
+    ) {
+      return;
+    }
+
+    await runHostScript(
+      "sudo docker run -d --name temp valian/docker-nginx-auto-ssl"
+    );
+
+    await runHostScript(`sudo mkdir -p ${proxyConfigDir}`);
+
+    await runHostScript(
+      `sudo docker cp temp:/usr/local/openresty/nginx/conf ${proxyConfigDir}`
+    );
+
+    await runHostScript(
+      `sudo mv ${proxyConfigDir}/conf/* ${proxyConfigDir} && sudo rm -r ${proxyConfigDir}/conf`
+    );
+
+    await runHostScript(`sudo docker rm -f temp`);
+
+    const configFile = path.join(proxyConfigDir, "nginx.conf");
+
+    let config = fs.readFileSync(configFile, "UTF8");
+    config = config.replace(
+      "client_max_body_size 100M;",
+      `client_header_timeout 10m;\n
+     client_body_timeout 10m;\n
+     send_timeout 10m;\n
+     client_max_body_size 5120M;\n
+     `
+    );
+
+    console.log("Writing patched proxy config file");
+    fs.writeFileSync(configFile, config);
+  } catch (error) {
+    console.log("Failed to patch proxy config", error);
+  }
+}
+
 async function run() {
   try {
+    await patchProxyConfig();
     const instructionFile = process.argv[2];
     if (!fs.existsSync(instructionFile)) {
       throw new Error("The instruction file doesnt exist:", instructionFile);
@@ -366,24 +418,3 @@ async function run() {
 }
 
 run();
-
-//test();
-
-async function test() {
-  // const json = require("./data.json");
-
-  // const currentInfo = json.items.map((x) => {
-  //   return {
-  //     port:
-  //       x.spec.ports[0] && x.spec.ports[0].nodePort
-  //         ? x.spec.ports[0].nodePort
-  //         : null,
-  //     name: x.metadata.name,
-  //   };
-  // });
-
-  // console.log(currentInfo);
-
-  const p = await getServicePort("lagenhetsbyte-paymentss");
-  console.log(p);
-}

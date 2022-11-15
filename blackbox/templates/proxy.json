@@ -25,6 +25,12 @@
             "persistentVolumeClaim": {
               "claimName": "proxy-volume-claim"
             }
+          },
+          {
+            "name": "proxy-config",
+            "persistentVolumeClaim": {
+              "claimName": "proxy-config-claim"
+            }
           }
         ],
         "containers": [
@@ -49,6 +55,10 @@
               {
                 "mountPath": "/etc/resty-auto-ssl",
                 "name": "proxy-volume"
+              },
+              {
+                "mountPath": "/usr/local/openresty/nginx/conf",
+                "name": "proxy-config"
               }
             ],
             "env": [
