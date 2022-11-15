@@ -2,9 +2,10 @@
 set -e
 
 # Variables to define
+#TAG_PREFIX
 #IMAGE_TAG
 #REGISTRY_DOMAIN
-#REPONAME
+#REPO
 #HOST
 #USER
 #SSH_KEY_DIR
@@ -23,7 +24,8 @@ for ARGUMENT in "$@"; do
 
 done
 
-REPOSITORY_URI=$REGISTRY_DOMAIN/$REPONAME
+IMAGE_TAG=$TAG_PREFIX$IMAGE_TAG
+REPOSITORY_URI=$REGISTRY_DOMAIN/$REPO
 
 echo "Logging in to docker"
 echo $REGISTRY_PASSWORD | docker login --username $REGISTRY_USER --password-stdin $REGISTRY_DOMAIN
@@ -46,3 +48,9 @@ COMMAND_3="sudo node deploy.js "$DEPLOYMENT_INSTRUCTION_FILE""
 
 echo "Connecting and running commands on remote server"
 ssh -o StrictHostKeyChecking=no -i "$SSH_KEY_DIR" "$USER"@"$HOST" ""$COMMAND_1"; "$COMMAND_2"; "$COMMAND_3";"
+
+exitCode=$?
+if [ $exitCode -eq 0 ]; then
+    ssh -o StrictHostKeyChecking=no -i "$SSH_KEY_DIR" "$USER"@"$HOST" "wget -N https://github.com/lagenhetsbyte/build-scripts/raw/master/blackbox/remove-private-registry-images.sh; sudo bash ./remove-private-registry-images.sh REPO=$REPO KEEP=5 TAG_PREFIX=$TAG_PREFIX"
+fi
+exit $exitCode
