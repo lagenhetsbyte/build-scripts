@@ -161,6 +161,7 @@ async function generateServiceTemplate(service) {
   const cTService = copy(tService);
   cTService.metadata.name = service.name;
   cTService.metadata.labels.app = service.name;
+
   cTService.spec.ports = [
     {
       name: `${service.appPort}-${service.appPort}`,
@@ -225,7 +226,7 @@ async function generateServiceTemplate(service) {
     delete container.readinessProbe;
     delete container.startupProbe;
   }
-  
+
   cTDeployment.spec.template.spec.containers.push(container);
 
   template.items.push(cTService);
@@ -247,18 +248,13 @@ async function generateProxyTemplate(service, production, removeServices = []) {
 
   const currentSites = await getCurrentProxySitesConfig();
   if (currentSites) {
-    const arr = currentSites
-      .split(";")
-      .filter((x) => x)
-      .map((x) => x.trim());
-    const filtered = arr.filter(
-      (x) =>
-        !service.domains.some((d) => x.includes(`${d}=`)) &&
-        !removeServices.some((rs) => x.includes(`${rs.domain}=`))
-    );
+    let matches = [
+      ...currentSites.matchAll(/([\w|\d|.|-]+)=[\w|\d|.|-]+:\d+/gim),
+    ].filter((x) => !service.domains.some((d) => d == x[1]));
 
-    sites = filtered.join(";");
-    if (filtered.length === 1) {
+    const proxySites = matches.map((x) => x[0]);
+    sites = proxySites.join(";");
+    if (matches.length > 0 && !sites.endsWith(";")) {
       sites += ";";
     }
   }
