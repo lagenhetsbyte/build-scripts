@@ -1,4 +1,5 @@
 # Blackbox
+
 Microk8s with automatic SSL certs, automatic rollback, and zero downtime (except when adding a domain, which restarts the proxy). Inspired by AWS Lightsail.
 
 ## Preps
@@ -10,25 +11,13 @@ wget https://raw.githubusercontent.com/lagenhetsbyte/build-scripts/master/blackb
 sudo bash ./setup.sh
 ```
 
-## Example 1. Deploy directly on Blackbox
-
-```
-wget https://github.com/lagenhetsbyte/build-scripts/raw/master/blackbox/blackbox.zip
-unzip ./blackbox.zip
-sudo node deploy.js instruction.json
-```
-
-## Instruction file
-
-Should be placed in the github repo (e.g. ./deploy-prod.json).
-
-Simple example:
+## Instruction file for Blackbox deployment
 
 ```json
 {
   "services": [
     {
-      "image": "strm/helloworld-http"
+      "image": "strm/helloworld-http",
       "dockerLoginCommand": "sudo aws ecr get-login-password --region eu-north-1 | sudo docker login --username AWS --password-stdin 123123123.dkr.ecr.eu-north-1.amazonaws.com",
       "domains": ["somedomain.com"],
       "name": "service1",
@@ -73,38 +62,19 @@ All options:
   ],
   // Optional
   "sslProductionMode": false, // For testing automatic SSL, without being banned from lets encrypt for trying too many times.
-  "deploymentTimeout": 60, // Default to 120 (sec). Rollsback on timeout. Why? Because if a pod fails to start, it can take 30 minutes to change state to failed, which is too long.
-  "removeServices": [
-    // This is to be able to remove a service that is no longer in use.
-    {
-      "name": "service2",
-      "domain": "somedomain2.com"
-    }
-  ]
+  "deploymentTimeout": 200 // Default to 120 (sec). Rollsback on timeout. Why? Because if a pod fails to start, it can take 30 minutes to change state to failed, which is too long.
 }
 ```
 
-## Example 2. Deploy from github action
+## Example 1. Deploy directly on Blackbox
 
-deploy.sh is made for AWS ECR, but can be modified to work with other services.
-
-```yaml
-- name: Deploy
-  run: |
-    curl -L https://raw.githubusercontent.com/lagenhetsbyte/build-scripts/master/blackbox/deploy.sh | bash -s \
-    INSTRUCTION_FILE="./deploy-prod.json" \
-    IMAGE_TAG="$prod-{{ github.run_number }}" \
-    AWS_REPONAME="testservice" \
-    AWS_REGION="eu-north-1" \
-    AWS_DOMAIN="123123123.dkr.ecr.eu-north-1.amazonaws.com" \
-    VPS_HOST="13.13.13.13" \
-    VPS_USER="ubuntu" \
-    AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}" \
-    AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
-    SSH_KEY_DIR="../ssh_key.pem"
+```
+wget https://github.com/lagenhetsbyte/build-scripts/raw/master/blackbox/blackbox.zip
+unzip ./blackbox.zip
+sudo node deploy.js instruction.json
 ```
 
-## Example 3. Deploy from github action
+## Example 2. Deploy with github action - AWS ECR repo
 
 deploy.sh is made for AWS ECR, but can be modified to work with other services. Make sure that the Blackbox is already logged in on the AWS account.
 
@@ -122,4 +92,67 @@ deploy.sh is made for AWS ECR, but can be modified to work with other services. 
     AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}" \
     AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
     SSH_KEY_DIR="../ssh_key.pem"
+```
+
+## Example 3. Deploy with github action - private repo
+
+```yaml
+- name: Deploy
+  run: |
+    curl -L https://raw.githubusercontent.com/lagenhetsbyte/build-scripts/master/blackbox/deploy-private.sh | bash -s \
+    TAG_PREFIX="prod-" \
+    IMAGE_TAG="${{ github.run_number }}" \
+    REPO="testrepo" \
+    REGISTRY_DOMAIN="registry.some.domain" \
+    HOST="13.13.13.13" \
+    USER="docker" \
+    SSH_KEY_DIR="../ssh_key.pem" \
+    INSTRUCTION_FILE="./deploy.json" \
+    REGISTRY_USER="${{ secrets.DOCKER_REGISTRY_USER }}" \
+    REGISTRY_PASSWORD="${{ secrets.DOCKER_REGISTRY_PASSWORD }}"
+```
+
+## Create private docker registry on Blackbox
+
+Create auth file
+
+```bash
+mkdir -p /mnt/docker-registry-auth/
+sudo docker run --entrypoint htpasswd httpd:2 -Bbn docker verysecurepassword > htpasswd
+cp htpasswd /mnt/docker-registry-auth
+```
+
+Create instruction for deployment
+
+```json
+{
+  "deploymentTimeout": 200,
+  "services": [
+    {
+      "image": "registry:2",
+      "dockerLoginCommand": "",
+      "domains": ["registry.some.domain"],
+      "name": "docker-registry",
+      "appPort": 5000,
+      "env": {
+        "REGISTRY_AUTH": "htpasswd",
+        "REGISTRY_AUTH_HTPASSWD_PATH": "/auth/htpasswd",
+        "REGISTRY_AUTH_HTPASSWD_REALM": "Registry Realm",
+        "REGISTRY_HTTP_SECRET": "anotherSuperSecurePasswordNotSameAsBefore",
+        "REGISTRY_STORAGE_DELETE_ENABLED": "true"
+      },
+      "volumes": [
+        { "name": "storage", "containerPath": "/var/lib/registry", "size": 50 },
+        { "name": "auth", "containerPath": "/auth", "size": 1 }
+      ]
+    }
+  ]
+}
+```
+
+Deploy
+
+```bash
+wget -N https://github.com/lagenhetsbyte/build-scripts/raw/master/blackbox/blackbox.zip && unzip -o blackbox.zip
+sudo node deploy.js instruction.json
 ```
