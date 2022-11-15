@@ -49,8 +49,9 @@ COMMAND_3="sudo node deploy.js "$DEPLOYMENT_INSTRUCTION_FILE""
 echo "Connecting and running commands on remote server"
 ssh -o StrictHostKeyChecking=no -i "$SSH_KEY_DIR" "$USER"@"$HOST" ""$COMMAND_1"; "$COMMAND_2"; "$COMMAND_3";"
 
+echo "EXIT CODE $?"
 exitCode=$?
 if [ $exitCode -eq 0 ]; then
-    ssh -o StrictHostKeyChecking=no -i "$SSH_KEY_DIR" "$USER"@"$HOST" "wget -N https://github.com/lagenhetsbyte/build-scripts/raw/master/blackbox/remove-private-registry-images.sh; sudo bash ./remove-private-registry-images.sh REPO=$REPO KEEP=5 TAG_PREFIX=$TAG_PREFIX"
+    ssh -o StrictHostKeyChecking=no -i "$SSH_KEY_DIR" "$USER"@"$HOST" "wget -N https://github.com/lagenhetsbyte/build-scripts/raw/master/blackbox/remove-private-registry-images.sh; sudo bash ./remove-private-registry-images.sh BASE_PATH="/mnt/docker-registry-storage" REPO=$REPO KEEP=5 TAG_PREFIX=$TAG_PREFIX"
 fi
 exit $exitCode
