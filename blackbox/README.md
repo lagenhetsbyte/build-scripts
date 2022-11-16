@@ -80,7 +80,7 @@ deploy.sh is made for AWS ECR, but can be modified to work with other services. 
 ```yaml
 - name: Deploy
   run: |
-    curl -L https://raw.githubusercontent.com/lagenhetsbyte/build-scripts/master/blackbox/deploy.sh | bash -s \
+    wget -N https://raw.githubusercontent.com/lagenhetsbyte/build-scripts/master/blackbox/deploy.sh && bash deploy.sh \
     INSTRUCTION_FILE="./deploy-prod.json" \
     IMAGE_TAG="$prod-{{ github.run_number }}" \
     AWS_REPONAME="testservice" \
@@ -98,7 +98,7 @@ deploy.sh is made for AWS ECR, but can be modified to work with other services. 
 ```yaml
 - name: Deploy
   run: |
-    curl -L https://raw.githubusercontent.com/lagenhetsbyte/build-scripts/master/blackbox/deploy-private.sh | bash -s \
+    wget -N https://raw.githubusercontent.com/lagenhetsbyte/build-scripts/master/blackbox/deploy-private.sh && bash deploy-private.sh \
     TAG_PREFIX="prod-" \
     IMAGE_TAG="${{ github.run_number }}" \
     REPO="testrepo" \
