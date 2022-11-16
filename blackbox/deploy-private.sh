@@ -25,7 +25,9 @@ for ARGUMENT in "$@"; do
 done
 
 ssh_command() {
+    echo "Running remote command: $1"
     ssh -o StrictHostKeyChecking=no -i $SSH_KEY_DIR $USER@$HOST $1
+    echo "Running remote command exit code: $?"
 }
 
 IMAGE_TAG=$TAG_PREFIX$IMAGE_TAG
