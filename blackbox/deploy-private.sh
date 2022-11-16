@@ -24,12 +24,6 @@ for ARGUMENT in "$@"; do
 
 done
 
-ssh_command () {
-    echo "Running remote command: $1"
-    ssh -o StrictHostKeyChecking=no -i $SSH_KEY_DIR $USER@$HOST "$1"
-    echo "Running remote command exit code: $?"
-}
-
 IMAGE_TAG=$TAG_PREFIX$IMAGE_TAG
 REPOSITORY_URI=$REGISTRY_DOMAIN/$REPO
 
@@ -47,6 +41,12 @@ RANDOM_STR=$(cat /proc/sys/kernel/random/uuid | sed 's/[-]//g' | head -c 20)
 DEPLOYMENT_INSTRUCTION_FILE="$IMAGE_TAG-deploy-$RANDOM_STR.json"
 
 scp -o StrictHostKeyChecking=no -i "$SSH_KEY_DIR" $INSTRUCTION_FILE "$USER"@"$HOST":"$DEPLOYMENT_INSTRUCTION_FILE"
+
+ssh_command() {
+    echo "Running remote command: $1"
+    ssh -o StrictHostKeyChecking=no -i $SSH_KEY_DIR $USER@$HOST "$1"
+    echo "Running remote command exit code: $?"
+}
 
 echo "Download blackbox"
 ssh_command "wget -N https://github.com/lagenhetsbyte/build-scripts/raw/master/blackbox/blackbox.zip && unzip -o blackbox.zip"
