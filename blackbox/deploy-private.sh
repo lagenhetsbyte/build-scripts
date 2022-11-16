@@ -48,8 +48,8 @@ function ssh_command() {
     echo "Running remote command exit code: $?"
 }
 
-#echo "Download blackbox"
-#ssh_command "wget -N https://github.com/lagenhetsbyte/build-scripts/raw/master/blackbox/blackbox.zip && unzip -o blackbox.zip"
+echo "Download blackbox"
+ssh_command "wget -N https://github.com/lagenhetsbyte/build-scripts/raw/master/blackbox/blackbox.zip && unzip -o blackbox.zip"
 
 echo "Replace image in instruction"
 ssh_command "node replace_image.js "$DEPLOYMENT_INSTRUCTION_FILE" "$REPOSITORY_URI:$IMAGE_TAG""
