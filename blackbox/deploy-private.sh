@@ -1,5 +1,6 @@
 #!/bin/bash
 set -e
+set -x
 
 # Variables to define
 #TAG_PREFIX
