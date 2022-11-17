@@ -55,6 +55,10 @@ async function deploy(instruction) {
       );
     }
 
+    if (service.preCommand) {
+      await runHostScript(service.preCommand);
+    }
+
     await runHostScript(
       `microk8s kubectl apply -f ${path.join(
         templatePath,
@@ -94,6 +98,8 @@ async function deploy(instruction) {
       );
 
       isSuccess = false;
+    } else if (service.postCommand) {
+      await runHostScript(service.postCommand);
     }
   }
 
