@@ -50,10 +50,11 @@ async function deploy(instruction) {
 
     if (service.dockerLoginCommand) {
       await runHostScript(service.dockerLoginCommand);
-      await runHostScript(
-        "sudo cp /root/.docker/config.json /var/snap/microk8s/common/var/lib/kubelet/"
-      );
     }
+
+    await runHostScript(
+      "sudo cp /root/.docker/config.json /var/snap/microk8s/common/var/lib/kubelet/"
+    );
 
     if (service.preCommand) {
       await runHostScript(service.preCommand);
