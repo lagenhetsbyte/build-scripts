@@ -132,6 +132,7 @@ Create instruction for deployment
       "domains": ["registry.some.domain"],
       "name": "docker-registry",
       "appPort": 5000,
+      "postCommand": "sudo curl -L https://raw.githubusercontent.com/lagenhetsbyte/build-scripts/master/blackbox/install-registry-cleanup.sh | bash -s",
       "env": {
         "REGISTRY_AUTH": "htpasswd",
         "REGISTRY_AUTH_HTPASSWD_PATH": "/auth/htpasswd",
