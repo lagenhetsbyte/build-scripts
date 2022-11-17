@@ -17,7 +17,7 @@ sudo bash ./setup.sh
 {
   "services": [
     {
-      "image": "strm/helloworld-http",      
+      "image": "strm/helloworld-http",
       "domains": ["somedomain.com"],
       "name": "service1",
       "appPort": 3001
@@ -98,8 +98,7 @@ deploy.sh is made for AWS ECR, but can be modified to work with other services. 
 ```yaml
 - name: Deploy
   run: |
-    wget -N https://raw.githubusercontent.com/lagenhetsbyte/build-scripts/master/blackbox/deploy-private.sh && bash deploy-private.sh \
-    TAG_PREFIX="prod-" \
+    wget -N https://raw.githubusercontent.com/lagenhetsbyte/build-scripts/master/blackbox/deploy-private.sh && bash deploy-private.sh \    
     IMAGE_TAG="${{ github.run_number }}" \
     REPO="testrepo" \
     REGISTRY_DOMAIN="registry.some.domain" \
@@ -128,7 +127,7 @@ Create instruction for deployment
   "deploymentTimeout": 200,
   "services": [
     {
-      "image": "registry:2",      
+      "image": "registry:2",
       "domains": ["registry.some.domain"],
       "name": "docker-registry",
       "appPort": 5000,
