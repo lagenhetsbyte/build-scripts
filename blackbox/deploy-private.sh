@@ -54,7 +54,7 @@ echo "Replace image in instruction"
 ssh_command "node replace_image.js "$DEPLOYMENT_INSTRUCTION_FILE" "$REPOSITORY_URI:$IMAGE_TAG""
 
 echo "Logging in to docker private repo"
-ssh_command "echo "$REGISTRY_PASSWORD" | docker login --username "$REGISTRY_USER" --password-stdin "$REGISTRY_DOMAIN""
+ssh_command "sudo echo "$REGISTRY_PASSWORD" | sudo docker login --username "$REGISTRY_USER" --password-stdin "$REGISTRY_DOMAIN""
 
 echo "Run blackbox deployment"
 ssh_command "sudo node deploy.js "$DEPLOYMENT_INSTRUCTION_FILE""
