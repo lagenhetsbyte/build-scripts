@@ -2,7 +2,6 @@
 set -e
 
 # Variables to define
-#TAG_PREFIX
 #IMAGE_TAG
 #REGISTRY_DOMAIN
 #REPO
@@ -24,7 +23,7 @@ for ARGUMENT in "$@"; do
 
 done
 
-IMAGE_TAG=$TAG_PREFIX$IMAGE_TAG
+IMAGE_TAG=$IMAGE_TAG
 REPOSITORY_URI=$REGISTRY_DOMAIN/$REPO
 
 echo "Logging in to docker"
