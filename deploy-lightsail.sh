@@ -27,8 +27,14 @@ CONFIG_CONTAINER=lightsail-container.json
 CONFIG_ENDPOINT=lightsail-endpoint.json
 
 # Build image
-echo "Building Docker image" 
-docker build -t $CONTAINER:latest .
+if [ ${NODE_ENV+x} ]; then
+  echo "Building Docker image with environment $NODE_ENV"
+  docker build -t $CONTAINER:latest . --build-arg NODE_ENV=$NODE_ENV
+else
+  echo "Building Docker image"
+  docker build -t $CONTAINER:latest .
+fi
+
 
 # Push image
 echo "Pushing Docker image" 
