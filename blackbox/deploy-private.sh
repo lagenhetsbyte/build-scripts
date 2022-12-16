@@ -11,6 +11,8 @@ set -e
 #INSTRUCTION_FILE
 #REGISTRY_USER
 #REGISTRY_PASSWORD
+#DOCKERFILE_DIR
+#BUILD_DIR
 
 echo "Variables:"
 
@@ -31,7 +33,22 @@ echo $REGISTRY_PASSWORD | docker login --username $REGISTRY_USER --password-stdi
 
 echo "Build started on $(date)"
 echo "Building the Docker image..."
-docker build -t $REPOSITORY_URI:$IMAGE_TAG .
+
+if [ -n "$BUILD_DIR" ]; then
+    CURRENT_DIR=$PWD
+    cd $BUILD_DIR
+fi
+
+if [ -z "$DOCKERFILE_DIR" ]; then
+    docker build -t $REPOSITORY_URI:$IMAGE_TAG .
+else
+    docker build -f $DOCKERFILE_DIR -t $REPOSITORY_URI:$IMAGE_TAG ..
+fi
+
+if [ -n "$BUILD_DIR" ]; then
+    cd $CURRENT_DIR
+fi
+
 echo "Build completed on $(date)"
 echo "Pushing the Docker images"
 docker push $REPOSITORY_URI:$IMAGE_TAG
