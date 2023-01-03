@@ -2,12 +2,12 @@ const fs = require("fs");
 const {
   runHostScript,
   getMk8sCurrentConfig,
-  getServicePort,
   getServicePorts,
   copy,
   deleteConfigPath,
   createConfigPath,
   deleteFile,
+  isDomainValid,
   getCurrentServiceInfo,
 } = require("./helpers");
 const path = require("path");
@@ -408,9 +408,24 @@ async function patchProxyConfig() {
   }
 }
 
+function validateDomains(services) {
+  for (const service of services) {
+    if (!Array.isArray(service.domains)) {
+      continue;
+    }
+
+    for (const domain of service.domains) {
+      if (domain && !isDomainValid(domain)) {
+        throw new Error(`Invalid service domain: ${domain}`);
+      }
+    }
+  }
+}
+
 async function run() {
   try {
     await patchProxyConfig();
+
     const instructionFile = process.argv[2];
     if (!fs.existsSync(instructionFile)) {
       throw new Error("The instruction file doesnt exist:", instructionFile);
@@ -423,6 +438,7 @@ async function run() {
     }
 
     instruction.services = await getServicePorts(instruction.services);
+    validateDomains(instruction.services);
     await deploy(instruction);
     await removeServices(instruction);
     await deleteConfigPath(templatePath);
