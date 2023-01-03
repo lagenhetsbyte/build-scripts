@@ -179,6 +179,12 @@ async function deleteFile(path) {
   await runHostScript(`sudo rm ${path}`, false);
 }
 
+function isDomainValid(domain) {
+  return /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z0-9][a-z0-9-]{0,61}[a-z0-9]$/.test(
+    domain
+  );
+}
+
 module.exports = {
   runHostScript,
   waitForCorrectDnsIp,
@@ -190,4 +196,5 @@ module.exports = {
   createConfigPath,
   deleteConfigPath,
   deleteFile,
+  isDomainValid,
 };
