@@ -178,4 +178,5 @@ sudo microk8s kubectl delete service/{name}
 sudo microk8s kubectl get ds/proxy-auto-ssl
 sudo microk8s kubectl logs ds/proxy-auto-ssl
 sudo microk8s kubectl get ds/proxy-auto-ssl -o json --namespace default
+sudo microk8s kubectl edit ds/proxy-auto-ssl
 ```
