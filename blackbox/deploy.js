@@ -256,16 +256,22 @@ async function generateProxyTemplate(service, production, removeServices = []) {
   const template = JSON.parse(fs.readFileSync("./templates/proxy.json"));
   const container = template.spec.template.spec.containers[0];
   let sites = "";
-  let allowedDomains = "";
+  let currentFilteredSiteDomains = [];
 
   const prodMode =
     production === null || production === undefined || production === true;
 
   const currentSites = await getCurrentProxySitesConfig();
   if (currentSites) {
-    let matches = [
+    const siteDomainMatches = [
       ...currentSites.matchAll(/([\w|\d|.|-]+)=[\w|\d|.|-]+:\d+/gim),
-    ].filter((x) => !service.domains.some((d) => d == x[1]));
+    ];
+
+    const matches = siteDomainMatches.filter(
+      (x) => !service.domains.some((d) => d == x[1])
+    );
+
+    currentFilteredSiteDomains = matches.map((x) => x[1]);
 
     const proxySites = matches.map((x) => x[0]);
     sites = proxySites.join(";");
@@ -283,11 +289,15 @@ async function generateProxyTemplate(service, production, removeServices = []) {
     value: sites,
   });
 
-  if (service.domains.length > 0) {
-    allowedDomains = `(${service.domains.join("|")})`;
+  const joinedDomains = [
+    ...service.domains,
+    ...currentFilteredSiteDomains,
+  ].join("|");
+
+  if (joinedDomains) {
     container.env.push({
       name: "ALLOWED_DOMAINS",
-      value: allowedDomains,
+      value: `(${joinedDomains})`,
     });
   }
 
