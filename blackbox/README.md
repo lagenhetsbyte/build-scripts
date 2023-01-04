@@ -154,3 +154,28 @@ Deploy
 wget -N https://github.com/lagenhetsbyte/build-scripts/raw/master/blackbox/blackbox.zip && unzip -o blackbox.zip
 sudo node deploy.js instruction.json
 ```
+
+## Troubleshooting
+
+Useful commands.
+
+### General
+
+```
+sudo microk8s kubectl get deployments
+sudo microk8s kubectl get services
+sudo microk8s kubectl get pods
+
+sudo microk8s kubectl logs deployment/{name}
+sudo microk8s kubectl get deployment/{name}
+sudo microk8s kubectl delete deployment/{name}
+sudo microk8s kubectl delete service/{name}
+```
+
+### Proxy
+
+```
+sudo microk8s kubectl get ds/proxy-auto-ssl
+sudo microk8s kubectl logs ds/proxy-auto-ssl
+sudo microk8s kubectl get ds/proxy-auto-ssl -o json --namespace default
+```
