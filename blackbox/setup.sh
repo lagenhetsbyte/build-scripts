@@ -27,6 +27,7 @@ fi
 
 echo "Update repo"
 sudo apt update
+
 echo "Install fail2ban"
 sudo apt install fail2ban -y
 
@@ -45,8 +46,12 @@ alias kubectl='microk8s kubectl'
 
 echo "Install docker"
 sudo apt install docker.io -y
+
 echo "Install nodejs"
+sudo apt install curl dirmngr apt-transport-https lsb-release ca-certificates -y
+curl -sL https://deb.nodesource.com/setup_16.x | sudo -E bash -
 sudo apt install nodejs -y
+
 echo "Install unzip"
 sudo apt install unzip -y
 
