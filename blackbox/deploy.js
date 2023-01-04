@@ -46,15 +46,17 @@ async function deploy(instruction) {
     );
 
     console.log("Generating configs in ", templatePath);
-    generateTemplates(service, instruction.sslProduction);
+    await generateTemplates(service, instruction.sslProduction);
 
     if (service.dockerLoginCommand) {
       await runHostScript(service.dockerLoginCommand);
     }
 
-    await runHostScript(
-      "sudo cp /root/.docker/config.json /var/snap/microk8s/common/var/lib/kubelet/"
-    );
+    if (fs.existsSync("/root/.docker/config.json")) {
+      await runHostScript(
+        "sudo cp /root/.docker/config.json /var/snap/microk8s/common/var/lib/kubelet/"
+      );
+    }
 
     if (service.preCommand) {
       await runHostScript(service.preCommand);
@@ -109,7 +111,7 @@ async function deploy(instruction) {
   }
 }
 
-function generateTemplates(service, sslProduction) {
+async function generateTemplates(service, sslProduction) {
   let volumes = [];
 
   if (Array.isArray(service.volumes)) {
@@ -118,7 +120,7 @@ function generateTemplates(service, sslProduction) {
       .flat();
   }
 
-  generateStorageTemplate([
+  await generateStorageTemplate([
     ...volumes,
     { name: "proxy-volume", containerPath: "/etc/resty-auto-ssl", size: 1 },
     {
@@ -128,8 +130,8 @@ function generateTemplates(service, sslProduction) {
     },
   ]);
 
-  generateServiceTemplate(service);
-  generateProxyTemplate(service, sslProduction, []);
+  await generateServiceTemplate(service);
+  await generateProxyTemplate(service, sslProduction, []);
 }
 
 async function generateStorageTemplate(storages) {
@@ -254,6 +256,7 @@ async function generateProxyTemplate(service, production, removeServices = []) {
   const template = JSON.parse(fs.readFileSync("./templates/proxy.json"));
   const container = template.spec.template.spec.containers[0];
   let sites = "";
+  let allowedDomains = "";
 
   const prodMode =
     production === null || production === undefined || production === true;
@@ -279,6 +282,14 @@ async function generateProxyTemplate(service, production, removeServices = []) {
     name: "SITES",
     value: sites,
   });
+
+  if (service.domains.length > 0) {
+    allowedDomains = `(${service.domains.join("|")})`;
+    container.env.push({
+      name: "ALLOWED_DOMAINS",
+      value: allowedDomains,
+    });
+  }
 
   container.env.push({
     name: "LETSENCRYPT_URL",
@@ -415,7 +426,7 @@ function validateDomains(services) {
     }
 
     for (const domain of service.domains) {
-      if (domain && !isDomainValid(domain)) {
+      if (!isDomainValid(domain)) {
         throw new Error(`Invalid service domain: ${domain}`);
       }
     }
