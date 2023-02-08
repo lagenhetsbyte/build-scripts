@@ -373,60 +373,72 @@ async function removeServices(instruction) {
   }
 }
 
+async function extractProxyConfigs(dest) {
+  await runHostScript(
+    "sudo docker run -d --name temp valian/docker-nginx-auto-ssl"
+  );
+
+  await runHostScript(`sudo mkdir -p ${dest}`);
+
+  await runHostScript(
+    `sudo docker cp temp:/usr/local/openresty/nginx/conf ${dest}`
+  );
+
+  await runHostScript(
+    `sudo mv ${dest}/conf/* ${dest} && sudo rm -r ${dest}/conf`
+  );
+
+  await runHostScript(`sudo docker rm -f temp`);
+}
+
 async function patchProxyConfig() {
-  try {
-    const proxyConfigDir = "/mnt/proxy-config";
+  const proxyConfigDir = "/mnt/proxy-config";
+  const nginxConfigFile = path.join(proxyConfigDir, "nginx.conf");
+  const restyConfigFile = path.join(proxyConfigDir, "resty-http.conf");
+
+  if (
+    fs.existsSync(proxyConfigDir) &&
+    fs.readdirSync(proxyConfigDir).length > 0
+  ) {
+    const nginxConfig = fs.readFileSync(nginxConfigFile, "UTF8");
+    const restyConfig = fs.readFileSync(restyConfigFile, "UTF8");
 
     if (
-      fs.existsSync(proxyConfigDir) &&
-      fs.readdirSync(proxyConfigDir).length > 0
+      !nginxConfig.includes("client_max_body_size 100M;") &&
+      !nginxConfig.includes("ssl_protocols TLSv1.2 TLSv1.3;") &&
+      !restyConfig.includes("ngx.re.match(domain, '.*', 'ijo')")
     ) {
       return;
     }
+  }
 
-    await runHostScript(
-      "sudo docker run -d --name temp valian/docker-nginx-auto-ssl"
-    );
+  await extractProxyConfigs(proxyConfigDir);
 
-    await runHostScript(`sudo mkdir -p ${proxyConfigDir}`);
+  let nginxConfig = fs.readFileSync(nginxConfigFile, "UTF8");
 
-    await runHostScript(
-      `sudo docker cp temp:/usr/local/openresty/nginx/conf ${proxyConfigDir}`
-    );
-
-    await runHostScript(
-      `sudo mv ${proxyConfigDir}/conf/* ${proxyConfigDir} && sudo rm -r ${proxyConfigDir}/conf`
-    );
-
-    await runHostScript(`sudo docker rm -f temp`);
-
-    const configFile = path.join(proxyConfigDir, "nginx.conf");
-
-    let config = fs.readFileSync(configFile, "UTF8");
-    config = config.replace(
-      "client_max_body_size 100M;",
-      `client_header_timeout 10m;\n
+  nginxConfig = nginxConfig.replace(
+    "client_max_body_size 100M;",
+    `client_header_timeout 10m;\n
      client_body_timeout 10m;\n
      send_timeout 10m;\n
      client_max_body_size 5120M;\n
      `
-    );
+  );
 
-    config = config.replace(
-      "ssl_protocols TLSv1.2 TLSv1.3;",
-      "ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;"
-    );
+  nginxConfig = nginxConfig.replace(
+    "ssl_protocols TLSv1.2 TLSv1.3;",
+    "ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;"
+  );
 
-    config = config.replace(
-      "ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;",
-      "ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES256-SHA256:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA;"
-    );
+  nginxConfig = nginxConfig.replace(
+    "ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;",
+    "ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES256-SHA256:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA;"
+  );
 
-    console.log("Writing patched proxy config file");
-    fs.writeFileSync(configFile, config);
-  } catch (error) {
-    console.log("Failed to patch proxy config", error);
-  }
+  await runHostScript(`sudo cp ./templates/resty-http.conf ${restyConfigFile}`);
+
+  console.log("Writing patched proxy config files");
+  fs.writeFileSync(nginxConfigFile, nginxConfig);
 }
 
 function validateDomains(services) {
