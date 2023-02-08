@@ -12,6 +12,9 @@ const {
 } = require("./helpers");
 const path = require("path");
 
+const proxyConfigDir = "/mnt/proxy-config";
+const nginxConfigFile = path.join(proxyConfigDir, "nginx.conf");
+const restyConfigFile = path.join(proxyConfigDir, "resty-http.conf");
 let timeout = 120;
 let templatePath = "";
 
@@ -22,6 +25,8 @@ async function deploy(instruction) {
   }
 
   let isSuccess = true;
+
+  await patchRestyConfig();
 
   const currentServices = await getCurrentServiceInfo();
   for (const service of instruction.services) {
@@ -373,6 +378,12 @@ async function removeServices(instruction) {
   }
 }
 
+function patchRestyConfig() {
+  return runHostScript(
+    `sudo cp ./templates/resty-http.conf ${restyConfigFile}`
+  );
+}
+
 async function extractProxyConfigs(dest) {
   await runHostScript(
     "sudo docker run -d --name temp valian/docker-nginx-auto-ssl"
@@ -392,10 +403,6 @@ async function extractProxyConfigs(dest) {
 }
 
 async function patchProxyConfig() {
-  const proxyConfigDir = "/mnt/proxy-config";
-  const nginxConfigFile = path.join(proxyConfigDir, "nginx.conf");
-  const restyConfigFile = path.join(proxyConfigDir, "resty-http.conf");
-
   if (
     fs.existsSync(proxyConfigDir) &&
     fs.readdirSync(proxyConfigDir).length > 0
@@ -435,7 +442,7 @@ async function patchProxyConfig() {
     "ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES256-SHA256:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA;"
   );
 
-  await runHostScript(`sudo cp ./templates/resty-http.conf ${restyConfigFile}`);
+  patchRestyConfig();
 
   console.log("Writing patched proxy config files");
   fs.writeFileSync(nginxConfigFile, nginxConfig);
