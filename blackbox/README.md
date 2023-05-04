@@ -35,10 +35,10 @@ All options:
       "forceDeployment": false, // Continues deployment without waiting for current deployment to complete.
       "dockerLoginCommand": "sudo aws ecr get-login-password --region eu-north-1 | sudo docker login --username AWS --password-stdin 123123123.dkr.ecr.eu-north-1.amazonaws.com",
       // Optional. Bash command line to sync AWS access key with docker.
-      "domains": ["somedomain.com"], // Required. These will be added to the proxy.
+      "domains": ["somedomain.com"], // Required, but the array can be empty for services that doesn't have an endpoint.
       "name": "service1", // Required, must be unique.
-      "image": "strm/helloworld-http", // deploy.sh adds the new image here. Otherwise, this field is required. Don't use :latest, it brakes automatic rollback.
-      "appPort": 3001, // Requred.
+      "image": "strm/helloworld-http", // deploy.sh adds the new image here. Otherwise, this field is required. Don't use :latest, it ruins automatic rollback.
+      "appPort": 3001, // Required.
       "env": {
         // Optional.
         "NODE_ENV": "development"
@@ -53,15 +53,14 @@ All options:
       ],
       "healthCheck": {
         // Optional, defaults to false.
-        "disabled": false,
+        "disabled": false, // Set to true if no health check endpoint exists.
         "path": "/" // Optional, default is /. Always a GET.
       },
       "instances": 1 // Optional, default is 1. Lowest amount of instances running at the same time.
     }
   ],
-  // Optional
-  "sslProductionMode": false, // For testing automatic SSL, without being banned from lets encrypt for trying too many times.
-  "deploymentTimeout": 200 // Default to 120 (sec). Rollsback on timeout. Why? Because if a pod fails to start, it can take 30 minutes to change state to failed, which is too long.
+  // Optional  
+  "deploymentTimeout": 200 // Defaults to 120 (sec). Rollsback on timeout. Why? Because if a pod fails to start, it can take 30 minutes to change state to failed, which is too long.
 }
 ```
 
