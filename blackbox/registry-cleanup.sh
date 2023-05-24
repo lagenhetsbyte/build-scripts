@@ -1,12 +1,13 @@
 #!/bin/bash
+
 set -e
 
 KEEP=5
-BASE_PATH="."
+BASE_PATH=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &>/dev/null && pwd)
 REGISTRY_REPO_PATH="/docker/registry/v2/repositories"
 REGISTRY_IMAGE_PATH="/_manifests/tags"
 
-REPOS=($(sudo ls "./docker/registry/v2/repositories"))
+REPOS=($(sudo ls "$BASE_PATH$REGISTRY_REPO_PATH"))
 for i in "${!REPOS[@]}"; do
     REPO=${REPOS[i]}
     REGISTRY_IMAGE_FULL_PATH=$BASE_PATH$REGISTRY_REPO_PATH/$REPO$REGISTRY_IMAGE_PATH
