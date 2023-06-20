@@ -26,8 +26,6 @@ async function deploy(instruction) {
 
   let isSuccess = true;
 
-  await patchRestyConfig();
-
   const currentServices = await getCurrentServiceInfo();
   for (const service of instruction.services) {
     if (
@@ -50,8 +48,8 @@ async function deploy(instruction) {
       false
     );
 
-    console.log("Generating configs in ", templatePath);
-    await generateTemplates(service, instruction.sslProduction);
+    console.log("Generating configs in", templatePath);
+    await generateTemplates(service);
 
     if (service.dockerLoginCommand) {
       await runHostScript(service.dockerLoginCommand);
@@ -82,12 +80,18 @@ async function deploy(instruction) {
       )}`
     );
 
-    await runHostScript(
-      `microk8s kubectl apply -f ${path.join(
-        templatePath,
-        "generated-proxy.json"
-      )} `
-    );
+    if (service.deployProxy) {
+      console.log("Deploying proxy");
+
+      await patchRestyConfig();
+
+      await runHostScript(
+        `microk8s kubectl apply -f ${path.join(
+          templatePath,
+          "generated-proxy.json"
+        )} `
+      );
+    }
 
     const deployResult = await runHostScript(
       `microk8s kubectl rollout status deployment ${service.name} ${timeoutStr}`,
@@ -116,7 +120,7 @@ async function deploy(instruction) {
   }
 }
 
-async function generateTemplates(service, sslProduction) {
+async function generateTemplates(service) {
   let volumes = [];
 
   if (Array.isArray(service.volumes)) {
@@ -136,7 +140,7 @@ async function generateTemplates(service, sslProduction) {
   ]);
 
   await generateServiceTemplate(service);
-  await generateProxyTemplate(service, sslProduction, []);
+  await generateProxyTemplate(service, []);
 }
 
 async function generateStorageTemplate(storages) {
@@ -257,16 +261,14 @@ async function generateServiceTemplate(service) {
   );
 }
 
-async function generateProxyTemplate(service, production, removeServices = []) {
+async function generateProxyTemplate(service, removeServices = []) {
   const template = JSON.parse(fs.readFileSync("./templates/proxy.json"));
   const container = template.spec.template.spec.containers[0];
   let sites = "";
   let currentFilteredSiteDomains = [];
 
-  const prodMode =
-    production === null || production === undefined || production === true;
-
   const currentSites = await getCurrentProxySitesConfig();
+
   if (currentSites) {
     const siteDomainMatches = [
       ...currentSites.matchAll(/([\w|\d|.|-]+)=[\w|\d|.|-]+:\d+/gim),
@@ -289,6 +291,12 @@ async function generateProxyTemplate(service, production, removeServices = []) {
     sites += `${domain}=localhost:${service.servicePort};`;
   }
 
+  const sitesArr = sites.split(";").filter((x) => x);
+  const currentSitesArr = currentSites.split(";").filter((x) => x);
+  if (sitesArr.some((s) => !currentSitesArr.includes(s))) {
+    service.deployProxy = true;
+  }
+
   container.env.push({
     name: "SITES",
     value: sites,
@@ -308,16 +316,8 @@ async function generateProxyTemplate(service, production, removeServices = []) {
 
   container.env.push({
     name: "LETSENCRYPT_URL",
-    value: prodMode
-      ? "https://acme-v02.api.letsencrypt.org/directory"
-      : "https://acme-staging-v02.api.letsencrypt.org/directory",
+    value: "https://acme-v02.api.letsencrypt.org/directory",
   });
-
-  const currentProdMode = await getCurrentProxyProductionMode();
-  if (currentProdMode !== prodMode) {
-    await runHostScript("sudo rm -r  /mnt/proxy-volume/", false);
-    await runHostScript("sudo mkdir -p /mnt/proxy-volume/", false);
-  }
 
   template.spec.template.spec.containers = [container];
 
@@ -331,16 +331,16 @@ async function getCurrentProxySitesConfig() {
   try {
     const config = await getMk8sCurrentConfig("ds/proxy-auto-ssl");
     if (!config) {
-      return null;
+      return "";
     }
 
     const env = config.spec.template.spec.containers[0].env.find(
       (x) => x.name === "SITES"
     );
-    return env.value;
+    return env.value || "";
   } catch (error) {}
 
-  return null;
+  return "";
 }
 
 async function getCurrentProxyProductionMode() {
@@ -378,7 +378,7 @@ async function removeServices(instruction) {
   }
 }
 
-function patchRestyConfig() {
+async function patchRestyConfig() {
   return runHostScript(
     `sudo cp ./templates/resty-http.conf ${restyConfigFile}`
   );
