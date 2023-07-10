@@ -4,7 +4,7 @@ const crypto = require("crypto");
 const path = require("path");
 const fs = require("fs");
 
-function runHostScript(command, failOnError = true, skipLog) {
+async function runHostScript(command, failOnError = true, skipLog) {
   if (!skipLog) {
     console.log("Running command:", command);
   }
