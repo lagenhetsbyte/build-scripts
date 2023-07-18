@@ -12,6 +12,7 @@ set -e
 #REGISTRY_USER
 #REGISTRY_PASSWORD
 #DOCKERFILE_DIR
+#DOCKERFILE
 #BUILD_DIR
 
 echo "Variables:"
@@ -41,6 +42,8 @@ fi
 
 if [ -z "$DOCKERFILE_DIR" ]; then
     docker build -t $REPOSITORY_URI:$IMAGE_TAG .
+elif [ -z "$DOCKERFILE" ]; then
+    docker build -f $DOCKERFILE -t $REPOSITORY_URI:$IMAGE_TAG .
 else
     docker build -f $DOCKERFILE_DIR -t $REPOSITORY_URI:$IMAGE_TAG ..
 fi
