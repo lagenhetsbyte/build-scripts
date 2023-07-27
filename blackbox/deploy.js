@@ -15,6 +15,8 @@ const path = require("path");
 const proxyConfigDir = "/mnt/proxy-config";
 const nginxConfigFile = path.join(proxyConfigDir, "nginx.conf");
 const restyConfigFile = path.join(proxyConfigDir, "resty-http.conf");
+const sslConfigFile = path.join(proxyConfigDir, "ssl.conf");
+
 let timeout = 120;
 let templatePath = "";
 
@@ -409,10 +411,11 @@ async function patchProxyConfig() {
   ) {
     const nginxConfig = fs.readFileSync(nginxConfigFile, "UTF8");
     const restyConfig = fs.readFileSync(restyConfigFile, "UTF8");
+    const sslConfig = fs.readFileSync(sslConfigFile, "UTF-8");
 
     if (
       !nginxConfig.includes("client_max_body_size 100M;") &&
-      !nginxConfig.includes("ssl_protocols TLSv1.2 TLSv1.3;") &&
+      !sslConfig.includes("ssl_protocols TLSv1.2 TLSv1.3;") &&
       !restyConfig.includes("ngx.re.match(domain, '.*', 'ijo')")
     ) {
       return;
@@ -422,22 +425,25 @@ async function patchProxyConfig() {
   await extractProxyConfigs(proxyConfigDir);
 
   let nginxConfig = fs.readFileSync(nginxConfigFile, "UTF8");
-
   nginxConfig = nginxConfig.replace(
     "client_max_body_size 100M;",
     `client_header_timeout 10m;\n
      client_body_timeout 10m;\n
+     proxy_read_timeout 10m;\n
+     proxy_connect_timeout 10m;\n
+     proxy_send_timeout 10m;\n
      send_timeout 10m;\n
      client_max_body_size 5120M;\n
      `
   );
 
-  nginxConfig = nginxConfig.replace(
+  let sslConfig = fs.readFileSync(sslConfigFile, "UTF8");
+  sslConfig = sslConfig.replace(
     "ssl_protocols TLSv1.2 TLSv1.3;",
     "ssl_protocols TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;"
   );
 
-  nginxConfig = nginxConfig.replace(
+  sslConfig = sslConfig.replace(
     "ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;",
     "ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:DHE-RSA-CHACHA20-POLY1305:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES256-SHA256:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA;"
   );
@@ -446,6 +452,13 @@ async function patchProxyConfig() {
 
   console.log("Writing patched proxy config files");
   fs.writeFileSync(nginxConfigFile, nginxConfig);
+  fs.writeFileSync(sslConfigFile, sslConfig);
+
+  console.log("Restarting proxy to apply changes");
+  await runHostScript(
+    `microk8s kubectl rollout restart ds proxy-auto-ssl`,
+    true
+  );
 }
 
 function validateDomains(services) {
