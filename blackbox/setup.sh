@@ -43,6 +43,8 @@ echo "Enable microk8s addons"
 sudo microk8s enable dns
 echo "Set microk8s alias"
 alias kubectl='microk8s kubectl'
+echo "Disable snap updates"
+sudo snap refresh --hold
 
 echo "Install docker"
 sudo apt install docker.io -y
