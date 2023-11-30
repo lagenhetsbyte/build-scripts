@@ -48,40 +48,54 @@ async function runHostScript(command, failOnError = true, skipLog) {
   });
 }
 
-function getDnsRecords(domain) {
-  return new Promise((resolve) => {
-    dns.lookup(
-      domain,
-      {
-        all: true,
-      },
-      (err, addresses) => {
-        if (err) {
-          resolve([]);
-        }
+async function checkAndRenewMk8sCerts() {
+  const result = await runHostScript(
+    "sudo microk8s refresh-certs --check",
+    true,
+    false
+  );
 
-        resolve(addresses.filter((x) => x.family === 4).map((x) => x.address));
-      }
-    );
-  });
-}
-
-async function waitForCorrectDnsIp(domain, expecting) {
-  while (true) {
-    console.log("Checking DNS record for:", domain, "Expecting:", expecting);
-
-    const response = await getDnsRecords(domain);
-    if (response.some((x) => x == expecting)) {
-      break;
-    } else {
-      console.log("DNS records did not match expected.");
-    }
-
-    await new Promise((resolve) => setTimeout(3000, resolve));
+  // Check CA cert
+  let currentLine = result.lines.find((l) => l.includes(" CA "));
+  let currentCertDaysLeft = getNumbersFromString(currentLine);
+  if (currentCertDaysLeft <= 0) {
+    throw "It seems like the CA certificate must be renewed. Do this manually because it requires downtime. Command: sudo microk8s refresh-certs --cert ca.crt";
   }
 
-  console.log("Found correct DNS record.");
-  return true;
+  // Check server cert
+  currentLine = result.lines.find((l) => l.includes(" server certificate "));
+  currentCertDaysLeft = getNumbersFromString(currentLine);
+  if (currentCertDaysLeft <= 0) {
+    await runHostScript(
+      "sudo microk8s refresh-certs --cert server.crt",
+      true,
+      false
+    );
+  }
+
+  // Check front-proxy cert
+  currentLine = result.lines.find((l) => l.includes(" front proxy client "));
+  currentCertDaysLeft = getNumbersFromString(currentLine);
+  if (currentCertDaysLeft <= 0) {
+    await runHostScript(
+      "sudo microk8s refresh-certs --cert front-proxy-client.crt",
+      true,
+      false
+    );
+  }
+}
+
+function getNumbersFromString(str) {
+  if (!str) {
+    return -1;
+  }
+
+  const matches = str.match(/[0-9+]/g);
+  if (Array.isArray(matches)) {
+    return Number.parseInt(matches.join(""));
+  }
+
+  return -1;
 }
 
 async function getMk8sCurrentConfig(serviceQuery) {
@@ -186,8 +200,8 @@ function isDomainValid(domain) {
 }
 
 module.exports = {
+  checkAndRenewMk8sCerts,
   runHostScript,
-  waitForCorrectDnsIp,
   getMk8sCurrentConfig,
   getCurrentServiceInfo,
   getServicePort,
