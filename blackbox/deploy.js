@@ -9,6 +9,7 @@ const {
   deleteFile,
   isDomainValid,
   getCurrentServiceInfo,
+  checkAndRenewMk8sCerts,
 } = require("./helpers");
 const path = require("path");
 
@@ -483,6 +484,8 @@ async function run() {
     if (!fs.existsSync(instructionFile)) {
       throw new Error("The instruction file doesnt exist:", instructionFile);
     }
+
+    await checkAndRenewMk8sCerts();
 
     templatePath = createConfigPath();
     const instruction = JSON.parse(fs.readFileSync(instructionFile));
