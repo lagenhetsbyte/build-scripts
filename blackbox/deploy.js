@@ -52,7 +52,7 @@ async function deploy(instruction) {
     );
 
     console.log("Generating configs in", templatePath);
-    await generateTemplates(service);
+    await generateTemplates(service, instruction);
 
     if (service.dockerLoginCommand) {
       await runHostScript(service.dockerLoginCommand);
@@ -123,7 +123,7 @@ async function deploy(instruction) {
   }
 }
 
-async function generateTemplates(service) {
+async function generateTemplates(service, instruction) {
   let volumes = [];
 
   if (Array.isArray(service.volumes)) {
@@ -143,7 +143,7 @@ async function generateTemplates(service) {
   ]);
 
   await generateServiceTemplate(service);
-  await generateProxyTemplate(service, []);
+  await generateProxyTemplate(service, instruction);
 }
 
 async function generateStorageTemplate(storages) {
@@ -305,6 +305,23 @@ async function generateProxyTemplate(service, removeServices = []) {
     value: sites,
   });
 
+  if (
+    instruction.redis &&
+    typeof instruction.redis === "object" &&
+    instruction.redis.host &&
+    instruction.redis.port
+  ) {
+    container.env.push({
+      name: "REDIS_HOST",
+      value: instruction.redis.host,
+    });
+
+    container.env.push({
+      name: "REDIS_PORT",
+      value: instruction.redis.port,
+    });
+  }
+
   const joinedDomains = [
     ...service.domains,
     ...currentFilteredSiteDomains,
@@ -406,10 +423,12 @@ async function extractProxyConfigs(dest) {
 }
 
 async function patchProxyConfig() {
-  if (
-    fs.existsSync(proxyConfigDir) &&
-    fs.readdirSync(proxyConfigDir).length > 0
-  ) {
+  if (!fs.existsSync(proxyConfigDir)) {
+    console.log("Proxy is not deployed, skipping config patch.");
+    return;
+  }
+
+  if (fs.readdirSync(proxyConfigDir).length > 0) {
     const nginxConfig = fs.readFileSync(nginxConfigFile, "UTF8");
     const restyConfig = fs.readFileSync(restyConfigFile, "UTF8");
     const sslConfig = fs.readFileSync(sslConfigFile, "UTF-8");
