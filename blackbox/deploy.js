@@ -313,12 +313,12 @@ async function generateProxyTemplate(service, instruction) {
   ) {
     container.env.push({
       name: "REDIS_HOST",
-      value: instruction.redis.host,
+      value: instruction.redis.host.toString(),
     });
 
     container.env.push({
       name: "REDIS_PORT",
-      value: instruction.redis.port,
+      value: instruction.redis.port.toString(),
     });
   }
 
