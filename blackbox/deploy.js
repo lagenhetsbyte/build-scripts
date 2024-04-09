@@ -264,7 +264,7 @@ async function generateServiceTemplate(service) {
   );
 }
 
-async function generateProxyTemplate(service, removeServices = []) {
+async function generateProxyTemplate(service, instruction) {
   const template = JSON.parse(fs.readFileSync("./templates/proxy.json"));
   const container = template.spec.template.spec.containers[0];
   let sites = "";
