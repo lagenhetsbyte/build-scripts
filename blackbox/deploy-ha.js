@@ -24,81 +24,87 @@ async function deploy(instruction) {
   let isSuccess = true;
 
   const currentServices = await getCurrentServiceInfo();
-  for (const service of instruction.services) {
-    if (
-      !service.forceDeployment &&
-      currentServices.some((x) => x.name == service.name)
-    ) {
-      const serviceDeploymentStatus = await runHostScript(
-        `microk8s kubectl rollout status deployment ${service.name}`,
-        false
-      );
+  const service = instruction.services[0];
 
-      if (serviceDeploymentStatus.code !== 0) {
-        throw new Error("Not ready for rollout!");
-      }
-    }
+  if (!service) {
+    throw new Error("No service to deploy");
+  }
 
-    console.log("Generating configs in", templatePath);
-    await generateTemplates(service, instruction);
-
-    if (service.dockerLoginCommand) {
-      await runHostScript(service.dockerLoginCommand);
-    }
-
-    if (fs.existsSync("/root/.docker/config.json")) {
-      await runHostScript(
-        "sudo cp /root/.docker/config.json /var/snap/microk8s/common/var/lib/kubelet/"
-      );
-    }
-
-    if (service.preCommand) {
-      await runHostScript(service.preCommand);
-    }
-
-    await runHostScript(
-      `microk8s kubectl apply -f ${path.join(
-        templatePath,
-        "generated-storage.json"
-      )}`,
+  if (
+    !service.forceDeployment &&
+    currentServices.some((x) => x.name == service.name)
+  ) {
+    const serviceDeploymentStatus = await runHostScript(
+      `microk8s kubectl rollout status deployment ${service.name}`,
       false
     );
 
-    await runHostScript(
-      `microk8s kubectl apply -f ${path.join(
-        templatePath,
-        "generated-service.json"
-      )}`
-    );
-
-    const deployResult = await runHostScript(
-      `microk8s kubectl rollout status deployment ${service.name} ${timeoutStr}`,
-      false
-    );
-
-    if (deployResult.code !== 0) {
-      console.log("Rollout for", service.name, "failed, starting rollback.");
-
-      await runHostScript(
-        `microk8s kubectl rollout undo deployment ${service.name}`
-      );
-
-      await runHostScript(
-        `microk8s kubectl rollout status deployment ${service.name} ${timeoutStr}`
-      );
-
-      isSuccess = false;
-    } else if (service.postCommand) {
-      await runHostScript(service.postCommand);
+    if (serviceDeploymentStatus.code !== 0) {
+      throw new Error("Not ready for rollout!");
     }
+  }
+
+  console.log("Generating configs in", templatePath);
+  await generateTemplates(service);
+
+  if (service.dockerLoginCommand) {
+    await runHostScript(service.dockerLoginCommand);
+  }
+
+  if (fs.existsSync("/root/.docker/config.json")) {
+    await runHostScript(
+      "sudo cp /root/.docker/config.json /var/snap/microk8s/common/var/lib/kubelet/"
+    );
+  }
+
+  if (service.preCommand) {
+    await runHostScript(service.preCommand);
+  }
+
+  await runHostScript(
+    `microk8s kubectl apply -f ${path.join(
+      templatePath,
+      "generated-storage.json"
+    )}`,
+    false
+  );
+
+  await runHostScript(
+    `microk8s kubectl apply -f ${path.join(
+      templatePath,
+      "generated-service.json"
+    )}`
+  );
+
+  const deployResult = await runHostScript(
+    `microk8s kubectl rollout status deployment ${service.name} ${timeoutStr}`,
+    false
+  );
+
+  if (deployResult.code !== 0) {
+    console.log("Rollout for", service.name, "failed, starting rollback.");
+
+    await runHostScript(
+      `microk8s kubectl rollout undo deployment ${service.name}`
+    );
+
+    await runHostScript(
+      `microk8s kubectl rollout status deployment ${service.name} ${timeoutStr}`
+    );
+
+    isSuccess = false;
+  } else if (service.postCommand) {
+    await runHostScript(service.postCommand);
   }
 
   if (!isSuccess) {
     throw new Error("Rollout failed for at least one service");
   }
+
+  return service.servicePort;
 }
 
-async function generateTemplates(service, instruction) {
+async function generateTemplates(service) {
   let volumes = [];
 
   if (Array.isArray(service.volumes)) {
@@ -246,7 +252,7 @@ function validateDomains(services) {
 async function run() {
   try {
     const instructionFile = process.argv[2];
-    
+
     if (!fs.existsSync(instructionFile)) {
       throw new Error("The instruction file doesnt exist:", instructionFile);
     }
@@ -261,9 +267,10 @@ async function run() {
 
     instruction.services = await getServicePorts(instruction.services);
     validateDomains(instruction.services);
-    await deploy(instruction);
+    const servicePort = await deploy(instruction);
     await deleteConfigPath(templatePath);
     await deleteFile(instructionFile);
+    console.log(`Service successfully deployed on port: ${servicePort}`);
     process.exit(0);
   } catch (error) {
     console.error(error);
