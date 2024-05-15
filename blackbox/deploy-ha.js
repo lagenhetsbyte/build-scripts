@@ -61,13 +61,13 @@ async function deploy(instruction) {
     await runHostScript(service.preCommand);
   }
 
-  await runHostScript(
-    `microk8s kubectl apply -f ${path.join(
-      templatePath,
-      "generated-storage.json"
-    )}`,
-    false
-  );
+  const storageTemplatePath = path.join(templatePath, "generated-storage.json");
+  if (fs.existsSync(storageTemplatePath)) {
+    await runHostScript(
+      `microk8s kubectl apply -f ${storageTemplatePath}`,
+      false
+    );
+  }
 
   await runHostScript(
     `microk8s kubectl apply -f ${path.join(
@@ -122,6 +122,10 @@ async function generateStorageTemplate(storages) {
   const t1 = template.items[0];
   const t2 = template.items[1];
   template.items = [];
+
+  if (!storages || storages.length === 0) {
+    return;
+  }
 
   for (const storage of storages.flat()) {
     const t1c = copy(t1);
