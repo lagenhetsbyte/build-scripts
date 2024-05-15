@@ -69,7 +69,7 @@ function ssh_command() {
 }
 
 
-if [ -n "$HA_MODE" ]; then
+if [ -z "$HA_MODE" ]; then
     echo "Downloading blackbox"
     ssh_command "wget -N https://github.com/lagenhetsbyte/build-scripts/raw/master/blackbox/blackbox.zip && unzip -o blackbox.zip"
 fi
