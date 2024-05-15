@@ -85,7 +85,7 @@ if [ -z "$HA_MODE" ]; then
     ssh_command "sudo node deploy.js "$DEPLOYMENT_INSTRUCTION_FILE""
 else
     echo "Running HA deployment"
-    ssh_command "sudo node deploy.js "$DEPLOYMENT_INSTRUCTION_FILE" "$REGISTRY_DOMAIN"|"$REGISTRY_USER"|"$REGISTRY_PASSWORD""
+    ssh_command "sudo node deploy.js "$DEPLOYMENT_INSTRUCTION_FILE" "$REGISTRY_DOMAIN"||"$REGISTRY_USER"||"$REGISTRY_PASSWORD""
 fi
 
 
