@@ -77,8 +77,20 @@ fi
 echo "Replacing image in instruction"
 ssh_command "node replace_image.js "$DEPLOYMENT_INSTRUCTION_FILE" "$REPOSITORY_URI:$IMAGE_TAG""
 
-echo "Logging in to docker private repo"
-ssh_command "sudo echo "$REGISTRY_PASSWORD" | sudo docker login --username "$REGISTRY_USER" --password-stdin "$REGISTRY_DOMAIN""
+if [ -z "$HA_MODE" ]; then
+    echo "Logging in to docker private repo"
+    ssh_command "sudo echo "$REGISTRY_PASSWORD" | sudo docker login --username "$REGISTRY_USER" --password-stdin "$REGISTRY_DOMAIN""
+    
+    echo "Running blackbox deployment"
+    ssh_command "sudo node deploy.js "$DEPLOYMENT_INSTRUCTION_FILE""
+else
+    echo "Running HA deployment"
+    ssh_command "sudo node deploy.js "$DEPLOYMENT_INSTRUCTION_FILE" "$REGISTRY_DOMAIN"|"$REGISTRY_USER"|"$REGISTRY_PASSWORD""
+fi
 
-echo "Running blackbox deployment"
-ssh_command "sudo node deploy.js "$DEPLOYMENT_INSTRUCTION_FILE""
+
+
+
+
+
+
