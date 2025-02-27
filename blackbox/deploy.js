@@ -104,6 +104,18 @@ async function deploy(instruction) {
     if (deployResult.code !== 0) {
       console.log("Rollout for", service.name, "failed, starting rollback.");
 
+      const getPodsCmd = `microk8s kubectl get pods --selector=app=${service.name} -o jsonpath='{.items[*].metadata.name}'`;
+      const podsResult = await runHostScript(getPodsCmd, false);
+      if (podsResult.code === 0 && podsResult.lines && podsResult.lines.length > 0) {
+        // lines är array av strängar; i detta fall är pods i första raden
+        const podNames = podsResult.lines[0].split(" ");
+        for (const podName of podNames) {
+          console.log(`Logs for pod: ${podName}`);
+          // 2. Visa loggar för varje pod
+          await runHostScript(`microk8s kubectl logs ${podName}`, false);
+        }
+      }
+
       await runHostScript(
         `microk8s kubectl rollout undo deployment ${service.name}`
       );
