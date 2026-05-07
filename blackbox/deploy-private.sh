@@ -79,13 +79,13 @@ ssh_command "node replace_image.js "$DEPLOYMENT_INSTRUCTION_FILE" "$REPOSITORY_U
 
 if [ -z "$HA_MODE" ]; then
     echo "Logging in to docker private repo"
-    ssh_command "sudo echo "$REGISTRY_PASSWORD" | sudo docker login --username "$REGISTRY_USER" --password-stdin "$REGISTRY_DOMAIN""
+    ssh_command "echo '$REGISTRY_PASSWORD' | sudo DOCKER_API_VERSION=1.41 docker login --username '$REGISTRY_USER' --password-stdin '$REGISTRY_DOMAIN'"
     
     echo "Running blackbox deployment"
-    ssh_command "sudo node deploy.js "$DEPLOYMENT_INSTRUCTION_FILE""
+    ssh_command "sudo DOCKER_API_VERSION=1.41 node deploy.js '$DEPLOYMENT_INSTRUCTION_FILE'"
 else
     echo "Running HA deployment"
-    ssh_command "sudo node deploy.js "$DEPLOYMENT_INSTRUCTION_FILE" '"$REGISTRY_DOMAIN"||"$REGISTRY_USER"||"$REGISTRY_PASSWORD"'"
+    ssh_command "sudo DOCKER_API_VERSION=1.41 node deploy.js '$DEPLOYMENT_INSTRUCTION_FILE' '$REGISTRY_DOMAIN||$REGISTRY_USER||$REGISTRY_PASSWORD'"
 fi
 
 
