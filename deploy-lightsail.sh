@@ -1,8 +1,10 @@
  #!/bin/bash
 set -e
 
-sudo apt update
-sudo apt install jq -y
+if ! command -v jq >/dev/null 2>&1; then
+    sudo apt-get update
+    sudo apt-get install -y jq
+fi
 
 # Variables to define
 #REGION
